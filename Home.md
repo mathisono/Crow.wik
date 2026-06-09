@@ -8,6 +8,7 @@ Crow is the rebranded home for the Raven mesh messaging work. This wiki is the w
 
 | Page | Purpose |
 | --- | --- |
+| [Command Reference](Command-Reference) | User-facing slash commands and APRS chat command forms. |
 | [USB Storage](USB-Storage) | AREDN USB data storage, degraded-mode behavior, persistent images, and storage quota handling. |
 
 ## Maintenance status
