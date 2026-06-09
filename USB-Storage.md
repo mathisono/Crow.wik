@@ -20,6 +20,36 @@ When using the `/cmd` path, send the command text shown below:
 
 In the UI slash-command form, these same actions appear as `/storage status`, `/storage usb scan`, `/storage usb enable`, `/storage usb disable`, and `/storage quota images <mb>`.
 
+## Enabling a new USB drive
+
+Use this process for a new USB storage device on an AREDN node running a supported Crow build.
+
+1. Plug the USB drive into the node.
+2. Open Crow and use the command channel.
+3. Run `/storage usb scan` to confirm Crow can see the removable drive.
+4. Run `/storage usb enable` to activate the configured external storage volume.
+5. Run `/storage status` and confirm the state reports active USB storage, the expected mountpoint, and the `/mnt/crow` data paths.
+6. Set or confirm the image quota with `/storage quota images <mb>` if persistent image storage needs a site-specific limit.
+
+Equivalent `/cmd` command text:
+
+```text
+storage usb scan
+storage usb enable
+storage status
+storage quota images 64
+```
+
+Expected success result:
+
+```text
+USB storage active.
+```
+
+If the result reports degraded storage, Crow should continue running from internal node storage. Check that the USB device is removable, mounted as expected, writable, and has enough free space. Then re-run `/storage usb scan` and `/storage usb enable`.
+
+Do not move the Crow core application files to the USB drive. External storage is only the data layer.
+
 ## Storage layout
 
 When USB storage is healthy, Crow uses:
