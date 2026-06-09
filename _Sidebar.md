@@ -3,6 +3,7 @@
 ## Pages
 
 - [Home](Home)
+- [Command Reference](Command-Reference)
 - [USB Storage](USB-Storage)
 
 ## Maintenance
