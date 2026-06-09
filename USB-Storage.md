@@ -2,7 +2,23 @@
 
 Crow keeps the application core on the node and can use an attached USB storage volume as the data layer on AREDN nodes.
 
-This feature is intended to reduce writes to node flash while keeping Crow boot-safe. If the external volume is missing or unhealthy, Crow should continue running from node storage and report a degraded storage state instead of crashing.
+External storage is optional. When enabled, it is used for Crow data, forms, and persistent images. The Crow runtime, package files, and minimal configuration remain on internal node storage so the node can still boot and Crow can report a degraded storage state if the external volume is missing or unhealthy.
+
+## External storage can be enabled
+
+On supported AREDN builds, external USB storage can be enabled from Crow's command channel instead of manually editing configuration files.
+
+When using the `/cmd` path, send the command text shown below:
+
+| Command text | Purpose |
+| --- | --- |
+| `storage status` | Show the active storage mode, root path, image path, mountpoint, and degraded reason if present. |
+| `storage usb scan` | List removable USB storage candidates detected by the platform. |
+| `storage usb enable` | Enable the configured external USB storage volume. |
+| `storage usb disable` | Return Crow to internal node storage. |
+| `storage quota images <mb>` | Set the persistent image quota in megabytes. |
+
+In the UI slash-command form, these same actions appear as `/storage status`, `/storage usb scan`, `/storage usb enable`, `/storage usb disable`, and `/storage quota images <mb>`.
 
 ## Storage layout
 
@@ -20,8 +36,8 @@ Crow periodically verifies that the USB volume is mounted, writable, and has eno
 
 - the core service remains running
 - the user is alerted that storage is degraded
-- temporary fallback storage is used under `/tmp/apps/raven/degraded`
-- image uploads fall back to `/tmp/apps/raven/images`
+- temporary fallback storage is used under `/tmp/apps/crow/degraded`
+- image uploads fall back to `/tmp/apps/crow/images`
 
 This protects the node from a hard failure when a USB stick is removed, fails, or fills up.
 
@@ -76,6 +92,8 @@ The AREDN platform exposes storage helper functions:
 
 The platform storage path function routes normal data, Winlink/form storage, and images through the active storage root. Existing code should continue using `platform.load()`, `platform.store()`, `platform.loadbinary()`, and `platform.storebinary()`.
 
-## Safety notes
+## Operator notes
 
-Destructive setup should require explicit user confirmation and should refuse internal flash, rootfs, overlay, or non-removable block devices. The Crow core should never be moved to the USB volume.
+External storage should only be used as the data layer. The Crow core should remain on the node.
+
+If external storage is not available, Crow should keep running from internal storage and clearly report that persistence is degraded until the external storage is restored.
