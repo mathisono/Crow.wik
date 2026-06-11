@@ -9,6 +9,7 @@ Crow is the rebranded home for the Raven mesh messaging work. This wiki is the w
 | Page | Purpose |
 | --- | --- |
 | [Command Reference](Command-Reference) | User-facing slash commands and APRS chat command forms. |
+| [APRS Bridge](APRS) | APRS-IS, KISS TCP, APRS passcode, APRS group messaging, and Part 97-safe channel behavior. |
 | [Strict Gatekeeper Mode](Strict-Gatekeeper-Mode) | Optional fail-closed bridge filtering and gateway identification for Meshtastic/MeshCore ingress. |
 | [USB Storage](USB-Storage) | AREDN USB data storage, degraded-mode behavior, persistent images, and storage quota handling. |
 
