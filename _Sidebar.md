@@ -4,6 +4,7 @@
 
 - [Home](Home)
 - [Command Reference](Command-Reference)
+- [APRS Bridge](APRS)
 - [USB Storage](USB-Storage)
 
 ## Maintenance
