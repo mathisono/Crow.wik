@@ -6,7 +6,7 @@
 - [Change Log](Change-Log)
 - [Command Reference](Command-Reference)
 - [APRS Bridge](APRS)
-- [Strict Gatekeeper Mode](Strict-Gatekeeper-Mode)
+- [Strict Gatekeeper](Strict-Gatekeeper-Mode)
 - [USB Storage](USB-Storage)
 
 ## Maintenance
