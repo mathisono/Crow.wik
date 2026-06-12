@@ -8,6 +8,24 @@ It is intended for gateways where Crow may act like a message-forwarding station
 
 Strict Gatekeeper is not a legal-compliance engine and it does not replace the control operator. It is an operator safety control that helps prevent Crow from becoming a blind automatic relay for unknown, encrypted, non-text, or non-amateur traffic.
 
+This page combines the earlier `Strict-Gatekeeper` and `Strict-Gatekeeper-Mode` wiki notes into one canonical operator page.
+
+## Plain-English purpose
+
+Strict Gatekeeper answers one basic question before Crow forwards traffic from Meshtastic or MeshCore into the amateur/AREDN side:
+
+> “Is this something I am willing to let my gateway station retransmit?”
+
+If the answer is no, the packet is dropped before it enters the normal routing queue.
+
+The current policy is intentionally conservative:
+
+- encrypted Meshtastic packets are dropped before Crow attempts to decrypt/forward them;
+- non-text bridged packets are dropped;
+- the sender must have a callsign-looking identity;
+- if `allowed_callsigns` is configured, the extracted sender callsign must be on that list;
+- accepted messages are rewritten so the gateway identifies itself in the message body.
+
 ## What Strict Gatekeeper does
 
 When enabled, Strict Gatekeeper checks bridged Meshtastic and MeshCore traffic before the normal Crow router forwards it onward.
@@ -21,6 +39,56 @@ When enabled, Strict Gatekeeper checks bridged Meshtastic and MeshCore traffic b
 | Text only | Message contains `data.text_message`. | Text may continue. | Non-text bridge traffic is dropped. |
 | No encrypted bridge forwarding | Meshtastic encrypted packet is detected before bridge forwarding. | Plain packets continue to text validation. | Encrypted packet is dropped. |
 | Gateway annotation | Accepted traffic is rewritten as `[SENDER via GATEWAY] message`. | Downstream users see source and gateway. | Not applicable. |
+
+## Why this matters for Part 97 automatic forwarding
+
+Crow can connect non-amateur mesh transports, such as Meshtastic or MeshCore, to AREDN or other amateur-radio paths. When Crow forwards a message automatically, the gateway station may transmit content that did not originate from the control operator sitting at the gateway.
+
+That creates a practical Part 97 concern:
+
+- amateur transmissions need responsible station control;
+- messages should not be obscured/encrypted for the purpose of hiding meaning;
+- station identity matters;
+- third-party and automatically forwarded messages need operator attention;
+- a gateway should not blindly retransmit unknown traffic.
+
+Strict Gatekeeper gives the Crow gateway an enforceable policy point before forwarding occurs.
+
+## Part 97 auto-forwarding explained
+
+A Crow bridge can look like a message-forwarding station. A message may start on Meshtastic or MeshCore, enter Crow through IP/multicast bridge traffic, and then be forwarded toward AREDN or another amateur-radio path. That means the gateway station may be the first amateur-side station that accepts the message for forwarding.
+
+The practical rule of thumb is:
+
+> Do not configure Crow as a blind bridge for traffic you would not be comfortable transmitting under your station callsign.
+
+Strict Gatekeeper does not decide whether your specific band, mode, channel, bandwidth, or control arrangement is legal. It does give you a local policy gate so automatic forwarding is limited to plain-text, callsign-identifiable, operator-approved traffic.
+
+## Part 97 concepts in plain language
+
+| Part 97 concept | Plain-English meaning | Why a Crow gateway cares | How Strict Gatekeeper helps |
+| --- | --- | --- | --- |
+| Control operator | A licensed operator is responsible for station transmissions. | A bridge does not remove operator responsibility. | Requires/uses a gateway callsign and creates visible gateway attribution. |
+| Automatic control | A station may transmit without a human pressing send only where the rules allow it. | Crow may automatically forward traffic once configured. | Filters traffic before it reaches the forwarding path. |
+| Message forwarding system | A system that accepts and forwards messages between stations. | Crow can behave like one when bridging traffic. | Adds sender checks, text-only filtering, and gateway annotation. |
+| First forwarding station | The first amateur-side station accepting a message has special responsibility. | Crow may be the first amateur/AREDN hop for Meshtastic or MeshCore traffic. | Whitelists and callsign checks reduce unknown-origin forwarding. |
+| No obscured meaning | Amateur traffic should not hide meaning with encryption or codes, except where specifically permitted. | Encrypted mesh packets should not be blindly forwarded into Part 97 traffic. | Drops encrypted Meshtastic packets before bridge forwarding. |
+| No arbitrary automatic retransmission | Part 97 limits automatic retransmission of other amateur stations' signals. | The gateway should not be a blind repeating machine. | Only admits traffic that passes policy before it can be routed onward. |
+| Station identification | Transmissions should identify responsible stations. | Downstream users need to know who originated and who forwarded. | Rewrites messages as `[SENDER via GATEWAY] ...`. |
+| Operator accountability | The gateway owner should be able to explain what crossed the bridge. | Logs and message annotation matter during events. | Drops policy failures and makes accepted traffic easier to audit. |
+
+## Current Crow implementation
+
+Crow currently has Strict Gatekeeper code in `gatekeeper.uc` and wires it into startup and routing.
+
+The gatekeeper:
+
+1. reads `strict_gatekeeper` configuration;
+2. extracts a gateway callsign;
+3. builds an optional callsign whitelist;
+4. checks inbound Meshtastic/MeshCore bridge messages before normal routing;
+5. drops traffic that fails policy;
+6. annotates accepted traffic as gateway-forwarded text.
 
 ## Example configuration
 
@@ -37,11 +105,24 @@ When enabled, Strict Gatekeeper checks bridged Meshtastic and MeshCore traffic b
 
 ## Configuration fields
 
-| Field | Type | Required? | Description | Recommended use |
+| Field | Type | Required? | Purpose | Recommended use |
 | --- | --- | --- | --- | --- |
 | `enabled` | boolean | Yes | Turns Strict Gatekeeper on or off. | Use `true` for public, event, or unattended bridge gateways. |
-| `gateway_callsign` | string | Strongly recommended | Callsign used to identify the forwarding gateway. | Use the gateway/control operator callsign. |
-| `allowed_callsigns` | array of strings | Optional | Whitelist of callsigns allowed to use the bridge. | Use a whitelist for real deployments. Empty means “any valid-looking callsign may pass.” |
+| `gateway_callsign` | string | Strongly recommended | Callsign used to identify the forwarding gateway. | Use the gateway/control-operator callsign. |
+| `allowed_callsigns` | array of strings | Optional but recommended | Sender whitelist. Empty means “accept any valid-looking callsign.” Non-empty means “only these callsigns may pass.” | Use a whitelist for real deployments. |
+
+## Forwarding decision table
+
+| Incoming traffic | Strict Gatekeeper off | Strict Gatekeeper on | Why |
+| --- | --- | --- | --- |
+| Plain text from Meshtastic/MeshCore with valid callsign-like sender | Routed normally. | Allowed and annotated as `[SENDER via GATEWAY] text`. | Plain-text, identifiable bridge traffic. |
+| Plain text from allowed callsign | Routed normally. | Allowed and annotated. | Sender is on the operator-approved list. |
+| Plain text from callsign not in whitelist | Routed normally. | Dropped when whitelist is configured. | Gateway policy restricts who may use the bridge. |
+| Plain text with no callsign-looking sender | Routed normally. | Dropped. | Sender is not sufficiently identified. |
+| Encrypted Meshtastic packet | May be handled by normal Meshtastic logic. | Dropped before bridge forwarding. | Avoids forwarding obscured traffic into amateur paths. |
+| MeshCore/Meshtastic non-text payload | Routed or handled normally depending on app behavior. | Dropped at gatekeeper. | Strict bridge policy is text-only. |
+| Native Crow/AREDN-originated message | Routed normally. | Not treated as Meshtastic/MeshCore ingress. | Gatekeeper is for bridge ingress, not all local messages. |
+| Already annotated gateway traffic | Routed normally. | Allowed if it is already from this gateway identity. | Avoids double-wrapping accepted gateway text. |
 
 ## How messages are rewritten
 
@@ -59,46 +140,12 @@ Forwarded by gateway `W6XYZ` after identifying sender `KJ6DZB`:
 [KJ6DZB via W6XYZ] radio check from the hill
 ```
 
-This makes the forwarding path visible to downstream users and helps the gateway operator review what was forwarded.
+This gives operators and downstream readers two important facts:
 
-## Why this matters for Part 97 automatic forwarding
+1. the apparent originating station/operator, `KJ6DZB`;
+2. the amateur gateway that accepted and forwarded it, `W6XYZ`.
 
-Crow can connect non-amateur mesh transports, such as Meshtastic or MeshCore, to AREDN or other amateur-radio paths. When Crow forwards a message automatically, the gateway station may transmit content that did not originate from the control operator sitting at the gateway.
-
-That creates a practical Part 97 concern:
-
-- amateur transmissions need responsible station control;
-- messages should not be obscured/encrypted for the purpose of hiding meaning;
-- station identity matters;
-- third-party and automatically forwarded messages need operator attention;
-- a gateway should not blindly retransmit unknown traffic.
-
-Strict Gatekeeper gives the Crow gateway an enforceable policy point before forwarding occurs.
-
-## Part 97 concepts in plain language
-
-| Part 97 concept | Plain-English meaning | Why a Crow gateway cares | How Strict Gatekeeper helps |
-| --- | --- | --- | --- |
-| Control operator | A licensed operator is responsible for station transmissions. | A bridge does not remove operator responsibility. | Requires/uses a gateway callsign and creates visible gateway attribution. |
-| Automatic control | A station may transmit without a human pressing send only where the rules allow it. | Crow may automatically forward traffic once configured. | Filters traffic before it reaches the forwarding path. |
-| Message forwarding system | A system that accepts and forwards messages between stations. | Crow can behave like one when bridging traffic. | Adds sender checks, text-only filtering, and gateway annotation. |
-| First forwarding station | The first amateur-side station accepting a message has special responsibility. | Crow may be the first amateur/AREDN hop for Meshtastic or MeshCore traffic. | Whitelists and callsign checks reduce unknown-origin forwarding. |
-| No obscured meaning | Amateur traffic should not hide meaning with encryption or codes, except where specifically permitted. | Encrypted mesh packets should not be blindly forwarded into Part 97 traffic. | Drops encrypted Meshtastic packets before bridge forwarding. |
-| Station identification | Transmissions should identify responsible stations. | Downstream users need to know who originated and who forwarded. | Rewrites messages as `[SENDER via GATEWAY] ...`. |
-| Operator accountability | The gateway owner should be able to explain what crossed the bridge. | Logs and message annotation matter during events. | Drops policy failures and makes accepted traffic easier to audit. |
-
-## Forwarding decision table
-
-| Incoming traffic | Strict Gatekeeper off | Strict Gatekeeper on | Why |
-| --- | --- | --- | --- |
-| Plain text from Meshtastic/MeshCore with valid callsign-like sender | Routed normally. | Allowed and annotated. | Plain-text, identifiable bridge traffic. |
-| Plain text from allowed callsign | Routed normally. | Allowed and annotated. | Sender is on the operator-approved list. |
-| Plain text from callsign not in whitelist | Routed normally. | Dropped when whitelist is configured. | Gateway policy restricts who may use the bridge. |
-| Plain text with no callsign-looking sender | Routed normally. | Dropped. | Sender is not sufficiently identified. |
-| Encrypted Meshtastic packet | May be handled by normal Meshtastic logic. | Dropped before bridge forwarding. | Avoids forwarding obscured traffic into amateur paths. |
-| MeshCore/Meshtastic non-text payload | Routed or handled normally depending on app behavior. | Dropped at gatekeeper. | Strict bridge policy is text-only. |
-| Native Crow/AREDN-originated message | Routed normally. | Not treated as Meshtastic/MeshCore ingress. | Gatekeeper is for bridge ingress, not all local messages. |
-| Already annotated gateway traffic | Routed normally. | Allowed if it is already from this gateway identity. | Avoids double-wrapping accepted gateway text. |
+It also makes after-action review easier because accepted bridge traffic carries visible attribution.
 
 ## Callsign matching limits
 
@@ -190,7 +237,7 @@ Expected wiring:
 | `router.uc` | Calls `gatekeeper.filterInboundBridge(msg)` before queuing Meshtastic/MeshCore ingress. |
 | `meshtastic.uc` | Drops encrypted Meshtastic packets early when strict mode is enabled. |
 | `STRICT_GATEKEEPER.md` | Source-repo operator note. |
-| `Strict-Gatekeeper.md` | Wiki operator documentation page. |
+| `Strict-Gatekeeper.md` | Canonical wiki operator documentation page. |
 
 ## Operator checklist
 
@@ -211,7 +258,7 @@ Before enabling a real bridge:
 Review the current FCC/eCFR text directly for operational decisions. Commonly relevant sections include:
 
 - 47 CFR § 97.109 — station control and automatic control
-- 47 CFR § 97.113 — prohibited transmissions
+- 47 CFR § 97.113 — prohibited transmissions, including messages intended to obscure meaning and automatic retransmission limits
 - 47 CFR § 97.115 — third-party communications
 - 47 CFR § 97.119 — station identification
 - 47 CFR § 97.219 — message forwarding systems
