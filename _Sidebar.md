@@ -7,6 +7,7 @@
 - [Command Reference](Command-Reference)
 - [APRS Bridge](APRS)
 - [Strict Gatekeeper](Strict-Gatekeeper)
+- [Winlink](Winlink)
 - [USB Storage](USB-Storage)
 
 ## Maintenance
