@@ -10,7 +10,19 @@
 - [Winlink](Winlink)
 - [USB Storage](USB-Storage)
 
+## Markdown files
+
+- `APRS.md`
+- `Change-Log.md`
+- `Command-Reference.md`
+- `Home.md`
+- `Strict-Gatekeeper.md`
+- `USB-Storage.md`
+- `Winlink.md`
+- `_Sidebar.md`
+
 ## Maintenance
 
 - Keep every `.md` wiki page linked here.
-- Add new feature pages to `Home.md` and `_Sidebar.md` in the same change.
+- Keep `Home.md` and `_Sidebar.md` in sync.
+- When a wiki page is removed, remove it from both the Home page inventory and this sidebar.
