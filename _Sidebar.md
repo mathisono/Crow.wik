@@ -6,6 +6,7 @@
 - [Change Log](Change-Log)
 - [Command Reference](Command-Reference)
 - [APRS Bridge](APRS)
+- [Memory Use](Memory-Use)
 - [Strict Gatekeeper](Strict-Gatekeeper)
 - [Winlink](Winlink)
 - [USB Storage](USB-Storage)
@@ -16,6 +17,7 @@
 - `Change-Log.md`
 - `Command-Reference.md`
 - `Home.md`
+- `Memory-Use.md`
 - `Strict-Gatekeeper.md`
 - `USB-Storage.md`
 - `Winlink.md`
