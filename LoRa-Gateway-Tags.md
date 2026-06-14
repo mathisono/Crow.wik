@@ -45,6 +45,110 @@ The numbering intentionally preserves the short primary gateway names:
 - `MTGW` means the primary Meshtastic gateway.
 - `MTG1` means the first additional Meshtastic gateway/backend.
 
+## How to enable tagging
+
+Gateway tags are enabled by using the wrapper backend modules instead of importing the raw backend modules directly.
+
+The raw backends remain available:
+
+```text
+meshcore_tnc.uc
+meshtastic.uc
+```
+
+The tagged wrappers are:
+
+```text
+meshcore_tnc_tagged.uc
+meshtastic_tagged.uc
+```
+
+### Enable MeshCore TNC tagging
+
+In a test image or branch, change the MeshCore import from:
+
+```ucode
+import * as meshcore from "meshcore_tnc";
+```
+
+to:
+
+```ucode
+import * as meshcore from "meshcore_tnc_tagged";
+```
+
+Then set the optional backend index in config:
+
+```json
+{
+  "meshcore_tnc": {
+    "enabled": true,
+    "gateway_index": 0,
+    "gateway_tag_max_payload": 150
+  }
+}
+```
+
+Expected tag output:
+
+| `gateway_index` | Tag |
+| --- | --- |
+| `0` | `MCGW` |
+| `1` | `MCG2` |
+| `2` | `MCG3` |
+
+### Enable Meshtastic tagging
+
+In a test image or branch, change the Meshtastic import from:
+
+```ucode
+import * as meshtastic from "meshtastic";
+```
+
+to:
+
+```ucode
+import * as meshtastic from "meshtastic_tagged";
+```
+
+Then set the optional backend index in config:
+
+```json
+{
+  "meshtastic": {
+    "enabled": true,
+    "gateway_index": 0,
+    "gateway_tag_max_payload": 200
+  }
+}
+```
+
+Expected tag output:
+
+| `gateway_index` | Tag |
+| --- | --- |
+| `0` | `MTGW` |
+| `1` | `MTG1` |
+| `2` | `MTG2` |
+
+### Disable tagging / rollback
+
+Rollback is only an import change.
+
+For MeshCore TNC, switch back to:
+
+```ucode
+import * as meshcore from "meshcore_tnc";
+```
+
+For Meshtastic, switch back to:
+
+```ucode
+import * as meshtastic from "meshtastic";
+```
+
+No message schema changes are required.
+
 ## Formatter behavior
 
 The helper accepts:
@@ -148,4 +252,18 @@ If the original text is longer than that room, the formatter keeps as much as po
 
 ## Current implementation note
 
-The shared formatter module has been added to the Crow codebase. Backend-specific call sites should use it at the final outbound text stage, immediately before MeshCore or Meshtastic packet encoding.
+The shared formatter module and the tagged wrapper modules have been added to the Crow codebase.
+
+Use the wrappers when you want gateway tags enabled:
+
+```text
+meshcore_tnc_tagged.uc
+meshtastic_tagged.uc
+```
+
+Use the raw modules when you want legacy behavior without outbound gateway tags:
+
+```text
+meshcore_tnc.uc
+meshtastic.uc
+```
