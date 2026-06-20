@@ -6,6 +6,8 @@
 - [Change Log](Change-Log)
 - [Command Reference](Command-Reference)
 - [APRS Bridge](APRS)
+- [LoRa Gateway Tags](LoRa-Gateway-Tags)
+- [Meshtastic API Backend](Meshtastic-API)
 - [Memory Use](Memory-Use)
 - [Strict Gatekeeper](Strict-Gatekeeper)
 - [Winlink](Winlink)
@@ -17,6 +19,8 @@
 - `Change-Log.md`
 - `Command-Reference.md`
 - `Home.md`
+- `LoRa-Gateway-Tags.md`
+- `Meshtastic-API.md`
 - `Memory-Use.md`
 - `Strict-Gatekeeper.md`
 - `USB-Storage.md`
