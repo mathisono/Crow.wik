@@ -13,6 +13,7 @@ Crow is the rebranded home for the Raven mesh messaging work. This wiki is the w
 | [Command Reference](Command-Reference) | `Command-Reference.md` | User-facing slash commands and APRS chat command forms. |
 | [APRS Bridge](APRS) | `APRS.md` | APRS-IS, KISS TCP, APRS passcode, APRS group messaging, and Part 97-safe channel behavior. |
 | [LoRa Gateway Tags](LoRa-Gateway-Tags) | `LoRa-Gateway-Tags.md` | Outbound LoRa gateway tag format and hard-coded MeshCore/Meshtastic tag scheme. |
+| [Meshtastic API Backend](Meshtastic-API) | `Meshtastic-API.md` | Experimental Meshtastic TCP Port-API backend status, including channel discovery/sync limitations. |
 | [Memory Use](Memory-Use) | `Memory-Use.md` | RAM/internal-flash guidance and using external USB storage as Crow's data layer. |
 | [Strict Gatekeeper](Strict-Gatekeeper) | `Strict-Gatekeeper.md` | Fail-closed bridge filtering, gateway identification, and Part 97 auto-forwarding guidance. |
 | [Winlink](Winlink) | `Winlink.md` | Winlink-style form UI, form inventory, and how to add forms. |
@@ -29,6 +30,7 @@ Change-Log.md
 Command-Reference.md
 Home.md
 LoRa-Gateway-Tags.md
+Meshtastic-API.md
 Memory-Use.md
 Strict-Gatekeeper.md
 USB-Storage.md
