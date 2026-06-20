@@ -4,6 +4,7 @@
 
 - [Home](Home)
 - [Change Log](Change-Log)
+- [Backend Selection and Test Deployment](Backend-Selection-and-Deployment)
 - [Command Reference](Command-Reference)
 - [APRS Bridge](APRS)
 - [LoRa Gateway Tags](LoRa-Gateway-Tags)
@@ -16,6 +17,7 @@
 ## Markdown files
 
 - `APRS.md`
+- `Backend-Selection-and-Deployment.md`
 - `Change-Log.md`
 - `Command-Reference.md`
 - `Home.md`
