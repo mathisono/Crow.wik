@@ -15,6 +15,7 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 | APRS backend | Raven `pt97-compliance` branch had richer APRS work. | Crow needs the Raven APRS backend restored as the current `aprs.uc`. | Target is Raven `pt97-compliance/aprs.uc`. Verify that `main` contains the restored code before release. |
 | APRS passcode | Raven APRS-IS backend supported `passcode`. | Crow docs now explicitly document APRS-IS passcode setup. | Use `aprs.backend.passcode` for single-backend compatibility and `aprs.backends.<name>.passcode` for named backends once multi-backend code is active. |
 | APRS groups | Raven supported APRS group messaging and repeat behavior. | Crow wiki now documents APRS groups, inline APRS message forms, and `/join` group creation. | Code should be verified against the Raven APRS implementation. |
+| Meshtastic API backend | Raven used the UDP/multicast Meshtastic backend. | Crow has an experimental separate `meshtastic_API.uc` TCP Port-API backend. | Current code supports first-pass TCP RX/TX plumbing only. Auto channel discovery and channel sync are **not implemented yet**. See [Meshtastic API Backend](Meshtastic-API). |
 | Slash commands | Earlier command set was smaller and less documented. | Crow wiki now has a user-facing command reference. | Includes `/help`, `/join`, `/leave`, `/groups`, `/channels`, `/backend`, `/backends`, `/export`, and `/storage`. |
 | Strict Gatekeeper | Not clearly operator-documented. | Crow includes `gatekeeper.uc` and expanded wiki guidance. | Handles fail-closed bridge filtering for Meshtastic/MeshCore ingress. |
 | Part 97 bridge policy | Needed clearer operator explanation. | Crow wiki now explains automatic forwarding risk and gateway responsibilities in plain language. | See Strict Gatekeeper page. |
@@ -28,9 +29,32 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 | [Home](Home) | Main wiki landing page and page index. | Updated to link active documentation pages. |
 | [Command Reference](Command-Reference) | User-facing slash commands and APRS chat command forms. | Added/updated. |
 | [APRS Bridge](APRS) | APRS-IS, KISS TCP, APRS passcode, groups, Part 97-safe APRS behavior. | Added. |
+| [Meshtastic API Backend](Meshtastic-API) | Experimental TCP Port-API backend status and channel discovery/sync limitations. | Added. |
 | [Strict Gatekeeper](Strict-Gatekeeper-Mode) | Fail-closed bridge filtering and Part 97 auto-forwarding explanation. | Expanded with tables and operator guidance. |
 | [USB Storage](USB-Storage) | AREDN USB data storage and persistent image storage behavior. | Added/updated. |
-| [Change Log](Change-Log) | This page. | Added. |
+| [Change Log](Change-Log) | This page. | Added/updated. |
+
+## Meshtastic API backend notes
+
+Crow now has a separate experimental `meshtastic_API.uc` backend for direct TCP Port-API testing. The original `meshtastic.uc` UDP/multicast backend remains the stable production path unless the router is deliberately changed.
+
+Current Meshtastic API support:
+
+- TCP connection to a Meshtastic node, default port `4403`;
+- Port-API frame parsing using the `0x94 0xc3` frame header;
+- `FromRadio.packet` decode for inbound packets;
+- `ToRadio.packet` envelope for outbound packets;
+- existing Crow channel/hash mapping for packets after decode.
+
+Not supported yet:
+
+- automatic discovery of the node's configured Meshtastic channels;
+- automatic Crow channel creation from the Meshtastic node channel list;
+- bidirectional channel sync;
+- periodic channel refresh;
+- pushing Crow channel changes back to the Meshtastic node.
+
+Do not document Meshtastic auto channel discovery or channel sync as supported until the code exists and has been tested with real Meshtastic hardware.
 
 ## APRS backend change notes
 
@@ -175,11 +199,14 @@ grep -n "passcode" aprs.uc
 # Strict Gatekeeper present
 grep -n "strict_gatekeeper\|allowed_callsigns\|filterInboundBridge" gatekeeper.uc config.uc router.uc
 
+# Meshtastic API status documented
+grep -n "channel_discovery\|channel_sync\|fromradio\|toradio" meshtastic_API.uc docs/*.md
+
 # USB storage commands present
 grep -n "storage usb\|quota images" commands.uc
 
 # Wiki links current
-git -C ../Crow.wik grep -n "APRS\|Strict Gatekeeper\|USB Storage\|Change Log" Home.md _Sidebar.md
+git -C ../Crow.wik grep -n "APRS\|Meshtastic API\|Strict Gatekeeper\|USB Storage\|Change Log" Home.md _Sidebar.md
 ```
 
 ## Known follow-up items
@@ -188,4 +215,5 @@ git -C ../Crow.wik grep -n "APRS\|Strict Gatekeeper\|USB Storage\|Change Log" Ho
 - Rename any remaining user-facing `Raven` strings to `Crow` where doing so does not break compatibility.
 - Verify APRS multi-backend code does not reference undefined Crow symbols.
 - Add tests or dry-run checks for `/join #group backend=NAME ...`.
+- Add Meshtastic API channel discovery and read-only channel sync after TCP Port-API hardware tests pass.
 - Add a clear operator example for `allowed_callsigns` and Part 97-safe bridge deployment.
