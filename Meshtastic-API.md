@@ -14,6 +14,14 @@ It is intentionally separate from the existing production UDP/multicast backend:
 meshtastic.uc
 ```
 
+Current implementation commit:
+
+```text
+c62497673449a0056ed4e79ef2866ba0487efd92
+```
+
+That commit added read-only Meshtastic API channel discovery to `meshtastic_API.uc`.
+
 ## Current support
 
 The current `meshtastic_API.uc` backend supports experimental TCP Port-API operation:
@@ -48,6 +56,18 @@ Defaults:
 - `channel_sync`: `"off"`
 - `channel_refresh_seconds`: `600`
 
+## Important deployment note
+
+`meshtastic_API.uc` is **not imported by `router.uc` by default**.
+
+The production router path still uses:
+
+```ucode
+import * as meshtastic from "meshtastic";
+```
+
+That means this backend is safe to keep in the tree while testing. To test it on hardware, temporarily wire the experimental backend only for the test, then revert that wiring unless the project explicitly decides to switch production routing.
+
 ## Auto channel discovery
 
 Current status: **implemented in code as experimental read-only runtime discovery**.
@@ -59,7 +79,11 @@ When `meshtastic_api.channel_discovery` is enabled, the backend sends a `ToRadio
 - PSK bytes;
 - Crow-compatible runtime `namekey` form.
 
-The backend stores discovered channels in an internal runtime map named `discoveredChannels`.
+The backend stores discovered channels in an internal runtime map named:
+
+```ucode
+let discoveredChannels = {};
+```
 
 Important limits:
 
@@ -82,6 +106,13 @@ When `channel_discovery` is enabled, the backend can periodically resend `ToRadi
 ```
 
 The refresh uses Crow's existing timer pattern rather than a blocking loop.
+
+Expected refresh behavior:
+
+- no config request is sent when `channel_discovery` is false;
+- config request is sent after connect when discovery is true;
+- config request is sent again after reconnect;
+- config request is sent on the refresh timer while connected.
 
 ## Channel sync
 
@@ -114,6 +145,26 @@ The backend uses targeted protobuf TLV parsing for only the fields needed for pa
 | `ChannelSettings.name` | 3 | `0x1A` |
 | `ChannelSettings.psk` | 4 | `0x22` |
 
+The two important corrected assumptions are:
+
+- `FromRadio.channel` is field 10 / tag `0x52`, not field 3.
+- `ToRadio.packet` is field 1 / tag `0x0A`, not field 2.
+
+## Expected log behavior
+
+When discovery is enabled, useful logs should show:
+
+```text
+meshtastic_API: connected tcp-port-api HOST:4403
+meshtastic_API: config request sent id=... reason=connect
+meshtastic_API: channel discovered index=... name=... pskfp=...
+meshtastic_API: config complete id=... last_request=...
+```
+
+Logs must **not** print raw PSKs.
+
+`pskfp` is a short fingerprint only, not the key itself.
+
 ## Hardware validation status
 
 Status: **needs real-node validation**.
@@ -133,6 +184,55 @@ Minimum validation checklist:
 9. Confirm outbound text still sends.
 10. Confirm reconnect triggers another config request.
 11. Confirm no persistent Crow config file is modified.
+
+## Suggested test commands
+
+From the Crow repo root:
+
+```sh
+# Confirm production router still imports the UDP backend
+grep -n 'import \* as meshtastic from "meshtastic"' router.uc
+! grep -n 'import \* as meshtastic from "meshtastic_API"' router.uc
+
+# Confirm the old backend is still UDP/multicast-oriented
+grep -n '224.0.0.69\|SOCK_DGRAM\|IP_ADD_MEMBERSHIP' meshtastic.uc
+
+# Confirm discovery code exists in the experimental backend
+grep -n 'channel_discovery\|want_config_id\|discoveredChannels\|extractChannels\|FROMRADIO_CHANNEL_TAG' meshtastic_API.uc
+
+# Confirm TCP API-only envelopes are not registered in the UDP proto file
+! grep -n 'fromradio\|toradio\|want_config_id\|config_complete_id' meshtasticprotobufs.uc
+
+# Syntax checks where ucode is available
+ucode -R -L . meshtastic_API.uc
+ucode -R -L . meshtastic.uc
+ucode -R -L . router.uc
+```
+
+Node reachability check:
+
+```sh
+nc -vz 192.168.4.1 4403
+```
+
+Replace `192.168.4.1` with the Meshtastic node IP.
+
+## Config-file safety check
+
+Before and after testing, compare config file timestamps and hashes.
+
+Example:
+
+```sh
+ls -l /etc/crow.conf /etc/crow.conf.override 2>/dev/null
+sha256sum /etc/crow.conf /etc/crow.conf.override 2>/dev/null
+```
+
+Expected result:
+
+- read-only discovery does not modify these files;
+- discovered channels remain runtime-only;
+- no operator-managed channel is overwritten.
 
 ## Future work
 
