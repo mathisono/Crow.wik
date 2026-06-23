@@ -17,14 +17,146 @@ Use this order when setting up a node:
 
 ## Bridges
 
-Crow can bridge messages between several transport families:
+Crow can bridge messages between several transport families. Start here before joining channels.
 
-| Bridge/backend | Default backend | Experimental backend | Notes |
+| Bridge family | Legacy UDP/default backend | Optional TCP/API backend | Default |
 | --- | --- | --- | --- |
-| Meshtastic | `meshtastic.uc` UDP/multicast | `meshtastic_API.uc` TCP Port-API | UDP remains default. TCP API is opt-in. |
-| MeshCore | `meshcore.uc` UDP/multicast | `meshcore_tcp_api.uc` TCP API | UDP remains default. TCP API is opt-in. |
-| APRS | APRS/KISS/APRS-IS config | none | APRS is configured separately from LoRa backend selection. |
-| MeshIP / AREDN native | native IP routing | none | Used for AREDN/native Crow routing. |
+| Meshtastic | `meshtastic.uc` UDP/multicast | `meshtastic_API.uc` TCP Port-API | Legacy UDP |
+| MeshCore | `meshcore.uc` UDP/multicast | `meshcore_tcp_api.uc` TCP API | Legacy UDP |
+| APRS | APRS/KISS/APRS-IS config | none | Operator-configured |
+| MeshIP / AREDN native | native IP routing | none | Built-in native routing |
+
+The bridge setup layer decides **how Crow talks to each transport**. Channel setup decides **which message groups/keys are allowed to route**.
+
+### Bridge: Meshtastic legacy UDP
+
+This is the original Meshtastic backend and remains the default compatibility path.
+
+```text
+meshtastic.uc
+UDP/multicast
+port 4403
+```
+
+Use it when you want Crow to behave like the original UDP Meshtastic bridge.
+
+```json
+{
+  "meshtastic": {
+    "enabled": true
+  }
+}
+```
+
+Expected selector log:
+
+```text
+meshtastic_backend: selected udp backend
+```
+
+### Bridge: Meshtastic TCP Port-API
+
+This is the new experimental Meshtastic API backend.
+
+```text
+meshtastic_API.uc
+TCP Port-API
+port 4403
+```
+
+Use it only when deliberately testing the TCP API path.
+
+```json
+{
+  "meshtastic": {
+    "enabled": false
+  },
+  "meshtastic_api": {
+    "enabled": true,
+    "host": "192.168.4.1",
+    "port": 4403,
+    "channel_discovery": true,
+    "channel_sync": "read_only",
+    "channel_refresh_seconds": 600
+  }
+}
+```
+
+Expected selector log:
+
+```text
+meshtastic_backend: selected tcp-port-api backend
+```
+
+### Bridge: MeshCore legacy UDP
+
+This is the original MeshCore backend and remains the default compatibility path.
+
+```text
+meshcore.uc
+UDP/multicast
+port 4402
+```
+
+Use it when you want Crow to behave like the original UDP MeshCore bridge.
+
+```json
+{
+  "meshcore": {
+    "enabled": true
+  }
+}
+```
+
+Expected selector log:
+
+```text
+meshcore_backend: selected udp backend
+```
+
+### Bridge: MeshCore TCP API
+
+This is the new experimental MeshCore TCP API backend.
+
+```text
+meshcore_tcp_api.uc
+TCP API
+```
+
+Use it only when deliberately testing the TCP API path.
+
+```json
+{
+  "meshcore": {
+    "enabled": false
+  },
+  "meshcore_tcp_api": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 4403
+  }
+}
+```
+
+Expected selector log:
+
+```text
+meshcore_backend: selected tcp-api backend
+```
+
+### Bridge: APRS
+
+APRS is independent of the Meshtastic and MeshCore backend selectors. Configure APRS separately using the APRS/KISS/APRS-IS settings for the deployed build.
+
+```json
+{
+  "aprs": {
+    "enabled": true
+  }
+}
+```
+
+### Backend selector rule
 
 The router imports selector modules:
 
@@ -37,8 +169,8 @@ The selector modules preserve the original UDP defaults while allowing API backe
 
 Default behavior:
 
-- `meshtastic.enabled=true` selects Meshtastic UDP.
-- `meshcore.enabled=true` selects MeshCore UDP.
+- `meshtastic.enabled=true` selects Meshtastic legacy UDP.
+- `meshcore.enabled=true` selects MeshCore legacy UDP.
 - API backends are not selected unless explicitly requested.
 - Only one backend per bridge family should be active at a time.
 
