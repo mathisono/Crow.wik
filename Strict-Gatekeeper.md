@@ -147,6 +147,48 @@ This gives operators and downstream readers two important facts:
 
 It also makes after-action review easier because accepted bridge traffic carries visible attribution.
 
+## LoRa Gateway Tags
+
+LoRa Gateway Tags are part of the same attribution story as Strict Gatekeeper.
+
+Strict Gatekeeper handles **inbound bridge safety** by filtering Meshtastic/MeshCore ingress and rewriting accepted traffic as:
+
+```text
+[SENDER via GATEWAY] message
+```
+
+LoRa Gateway Tags handle **outbound LoRa-side attribution** by marking cleartext gateway-originated messages sent out to local LoRa networks as:
+
+```text
+CALLSIGN@TAG> message
+```
+
+Examples:
+
+```text
+KJ6DZB@MCGW> Hello local MeshCore
+KJ6DZB@MCG2> Same message through second MeshCore backend
+KJ6DZB@MTGW> Hello Meshtastic
+KJ6DZB@MTG1> Same message through first additional Meshtastic backend
+```
+
+Current tag families:
+
+| Target backend family | Primary gateway | Additional gateways |
+| --- | --- | --- |
+| MeshCore | `MCGW` | `MCG2`, `MCG3`, `MCG4`, ... |
+| Meshtastic | `MTGW` | `MTG1`, `MTG2`, `MTG3`, ... |
+
+Security/operations rules:
+
+- Gateway tags do not replace Strict Gatekeeper.
+- Strict Gatekeeper decides whether bridged ingress may be forwarded.
+- Gateway tags help LoRa-side users see that a message came through a gateway/backend.
+- Gateway tags should be applied at the outbound backend layer, not globally in the router.
+- Raw PSKs or hidden channel secrets must not be embedded in gateway tags.
+
+See also: [LoRa Gateway Tags](LoRa-Gateway-Tags).
+
 ## Callsign matching limits
 
 The current callsign matcher intentionally uses a simple U.S.-style callsign token:
@@ -214,6 +256,7 @@ Useful things to log or verify during operations:
 | Whitelist loaded | Confirms the bridge is not open to everyone. |
 | Drop counts | Shows whether unknown or encrypted traffic is trying to cross. |
 | Accepted message examples | Confirms annotation is readable and useful. |
+| Gateway tag examples | Confirms outbound LoRa attribution is visible. |
 | Operator review time | Supports after-action review and troubleshooting. |
 
 ## Source/code release checks
@@ -226,6 +269,7 @@ grep -n "allowed_callsigns" gatekeeper.uc
 grep -n "filterInboundBridge" gatekeeper.uc router.uc
 grep -n "setGatekeeper\|config._gatekeeper" config.uc router.uc meshtastic.uc
 grep -n "drop encrypted Meshtastic" meshtastic.uc
+grep -n "lora_outbound_text\|MCGW\|MTGW" *.uc
 ```
 
 Expected wiring:
@@ -236,6 +280,7 @@ Expected wiring:
 | `config.uc` | Imports and initializes gatekeeper, stores it as `config._gatekeeper`, and passes it to the router. |
 | `router.uc` | Calls `gatekeeper.filterInboundBridge(msg)` before queuing Meshtastic/MeshCore ingress. |
 | `meshtastic.uc` | Drops encrypted Meshtastic packets early when strict mode is enabled. |
+| `lora_outbound_text.uc` | Formats outbound LoRa gateway tags such as `CALLSIGN@MCGW>` and `CALLSIGN@MTGW>`. |
 | `STRICT_GATEKEEPER.md` | Source-repo operator note. |
 | `Strict-Gatekeeper.md` | Canonical wiki operator documentation page. |
 
@@ -249,9 +294,10 @@ Before enabling a real bridge:
 4. Confirm Meshtastic/MeshCore users have callsign-bearing names.
 5. Confirm logs are captured.
 6. Send a test message and verify the `[SENDER via GATEWAY]` annotation.
-7. Confirm encrypted traffic is not forwarded.
-8. Confirm non-text packets are dropped.
-9. Review Part 97 responsibilities for your actual deployment path.
+7. Send an outbound LoRa-side test and verify the `CALLSIGN@TAG>` gateway tag.
+8. Confirm encrypted traffic is not forwarded.
+9. Confirm non-text packets are dropped.
+10. Review Part 97 responsibilities for your actual deployment path.
 
 ## Part 97 rule anchors for operators
 
@@ -271,4 +317,4 @@ https://www.ecfr.gov/current/title-47/chapter-I/subchapter-D/part-97
 
 ## Short version
 
-Strict Gatekeeper is the switch that makes Crow stop acting like a blind bridge. It forces Meshtastic/MeshCore ingress to be plain-text, callsign-identifiable, and optionally whitelisted before Crow forwards it toward AREDN/amateur-radio paths.
+Strict Gatekeeper is the switch that makes Crow stop acting like a blind bridge. It forces Meshtastic/MeshCore ingress to be plain-text, callsign-identifiable, and optionally whitelisted before Crow forwards it toward AREDN/amateur-radio paths. LoRa Gateway Tags complement that by marking outbound LoRa-side gateway traffic as `CALLSIGN@TAG> message`.
