@@ -4,6 +4,7 @@
 
 - [Home](Home)
 - [Change Log](Change-Log)
+- [Configuration](Configuration)
 - [Backend Selection and Test Deployment](Backend-Selection-and-Deployment)
 - [Command Reference](Command-Reference)
 - [APRS Bridge](APRS)
@@ -20,6 +21,7 @@
 - `Backend-Selection-and-Deployment.md`
 - `Change-Log.md`
 - `Command-Reference.md`
+- `Configuration.md`
 - `Home.md`
 - `LoRa-Gateway-Tags.md`
 - `Meshtastic-API.md`
