@@ -10,6 +10,7 @@ Crow is the rebranded home for the Raven mesh messaging work. This wiki is the w
 | --- | --- | --- |
 | [Home](Home) | `Home.md` | Main wiki landing page and index of all wiki Markdown files. |
 | [Change Log](Change-Log) | `Change-Log.md` | Raven-to-Crow feature and documentation change tracking. |
+| [Configuration](Configuration) | `Configuration.md` | Operator configuration how-to for backend selection, Meshtastic API, and MeshCore TCP API setup. |
 | [Backend Selection and Test Deployment](Backend-Selection-and-Deployment) | `Backend-Selection-and-Deployment.md` | Backend selector behavior, default UDP compatibility, package rebuild, deployment, and validation workflow. |
 | [Command Reference](Command-Reference) | `Command-Reference.md` | User-facing slash commands and APRS chat command forms. |
 | [APRS Bridge](APRS) | `APRS.md` | APRS-IS, KISS TCP, APRS passcode, APRS group messaging, and Part 97-safe channel behavior. |
@@ -30,6 +31,7 @@ APRS.md
 Backend-Selection-and-Deployment.md
 Change-Log.md
 Command-Reference.md
+Configuration.md
 Home.md
 LoRa-Gateway-Tags.md
 Meshtastic-API.md
