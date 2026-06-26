@@ -8,6 +8,16 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 
 ## 2026-06-25
 
+### Wiki: verify Winlink USB storage behavior
+**Wiki status:** committed to `mathisono/Crow.wik`
+
+- Verified `winlink.uc` uses the relative form path `winlink/forms` and reads form assets through platform helpers such as `platform.dirtree()` and `platform.loadbinary()`.
+- Verified the AREDN platform maps any path beginning with `winlink/` under the active storage root.
+- Documented that internal storage maps Winlink forms to `/usr/local/crow/winlink/forms`.
+- Documented that healthy USB storage maps Winlink forms to `/mnt/crow/winlink/forms`.
+- Documented that degraded USB mode falls back to the internal form path while images fall back to `/tmp/apps/crow/images`.
+- Updated `USB-Storage.md` to align degraded-mode and Winlink/form storage wording with the code.
+
 ### Wiki: split configuration and channel setup pages
 **Wiki status:** committed to `mathisono/Crow.wik`
 
