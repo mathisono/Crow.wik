@@ -18,6 +18,7 @@ Crow is the upgraded Raven mesh messaging platform for AREDN, APRS, Meshtastic, 
 - [Backend Selection and Test Deployment](Backend-Selection-and-Deployment.md) — backend selector and deployment validation
 - [LoRa Gateway Tags](LoRa-Gateway-Tags.md) — outbound LoRa gateway tag format
 - [Meshtastic API Backend](Meshtastic-API.md) — experimental Meshtastic TCP Port-API backend notes
+- [MeshCore Backends](MeshCore-Backends.md) — original MeshCore UDP backend, experimental TCP Companion API backend, selector behavior, and discovery limitations
 - [Winlink](Winlink.md) — Winlink-style form UI, form storage, and current implementation notes
 
 ## Storage and operations
@@ -40,6 +41,7 @@ Configuring-Channels.md
 Home.md
 LoRa-Gateway-Tags.md
 Meshtastic-API.md
+MeshCore-Backends.md
 Memory-Use.md
 Strict-Gatekeeper.md
 Supernodes.md
