@@ -8,6 +8,18 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 
 ## 2026-06-25
 
+### Wiki: MeshCore backend documentation audit
+**Wiki status:** committed to `mathisono/Crow.wik`
+
+- Added `MeshCore-Backends.md` to document what the current code actually does for MeshCore.
+- Documented the backend selector in `meshcore_backend.uc`: default UDP, explicit `api` / `tcp-api` / `companion-api`, and `meshcore_tcp_api.enabled=true` with `meshcore.enabled=false`.
+- Documented the original UDP backend behavior: multicast `224.0.0.69:4402`, bridge key requirement, inbound/outbound support, shared-key persistence, direct/group text handling, adverts, and ACK/routing behavior.
+- Documented the TCP Companion API backend behavior: TCP `host:port`, HELLO on connect, direct `0x07` decode, group `0x08` decode, Smart Accumulator gates, reconnect behavior, and `backend: "tcp_api"` message tagging.
+- Corrected the wiki to state that MeshCore TCP API outbound send is not implemented yet; production outbound still requires the UDP backend.
+- Corrected the wiki to state that MeshCore TCP discovery is not production-ready yet because `queryDeviceGroups()` still has the radio command send stubbed.
+- Linked the new page from `README.md`, `Home.md`, and `_Sidebar.md`.
+- Updated `Configuration.md` so the MeshCore section matches the selector and backend code.
+
 ### Crow: fix USB setup script Crow path
 **Crow commit:** `dd82ff90`
 
@@ -57,6 +69,7 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 | [Command Reference](Command-Reference) | User-facing slash commands and APRS chat command forms. | Added/updated. |
 | [APRS Bridge](APRS) | APRS-IS, KISS TCP, APRS passcode, groups, Part 97-safe APRS behavior. | Added. |
 | [Meshtastic API Backend](Meshtastic-API) | Experimental TCP Port-API backend status and channel discovery/sync limitations. | Added. |
+| [MeshCore Backends](MeshCore-Backends) | MeshCore UDP and TCP Companion API behavior. | Added. |
 | [Strict Gatekeeper](Strict-Gatekeeper-Mode) | Fail-closed bridge filtering and Part 97 auto-forwarding explanation. | Expanded with tables and operator guidance. |
 | [USB Storage](USB-Storage) | AREDN USB data storage and persistent image storage behavior. | Added/updated. |
 | [Change Log](Change-Log) | This page. | Added/updated. |
