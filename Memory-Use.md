@@ -1,100 +1,250 @@
-# Memory Use
+# Memory Use and Storage
 
-Crow is designed to run on small AREDN/OpenWrt-class nodes where internal flash and RAM are limited. The main rule is:
+Crow inherits Raven's lightweight message-storage model, but Crow adds a stronger operator-facing storage path: USB storage.
 
-> Keep the Crow core on the node, but move Crow's growing data layer to external USB storage when the node supports it.
+Crow can run entirely from node internal storage. For busy nodes, event hubs, Winlink/form nodes, image/file sharing, or node message stores, the recommended setup is to keep the Crow application on the node and move the Crow data layer to USB storage.
 
-External USB storage does **not** replace RAM, and it should not be treated as the place to run the whole application from. It is used to keep persistent data, message stores, forms, and uploaded images from consuming the node's limited internal flash.
+## Storage locations
 
-## Why memory and storage matter
+Crow uses these main storage areas:
 
-Small mesh nodes often have three separate limits:
+| Data | Internal/default path | USB mode path |
+|---|---|---|
+| Crow JSON data, messages, node DB, and text stores | `/usr/local/crow/data` | `/mnt/crow/data` |
+| Uploaded images and shared binary files | `/tmp/apps/crow/images` | `/mnt/crow/images` |
+| Winlink form files/data | `/usr/local/crow/winlink/forms` | `/mnt/crow/winlink/forms` |
+| Temporary runtime files | `/tmp/apps/crow` | still `/tmp/apps/crow` for temporary runtime use |
 
-| Resource | What it is | Why Crow cares |
-| --- | --- | --- |
-| RAM | Working memory while Crow is running. | Too little RAM can cause crashes, failed parsing, slow UI, or killed processes. |
-| Internal flash | Built-in storage on the node. | Filling internal flash can break config writes, package updates, logs, and service startup. |
-| External USB storage | Optional attached storage volume. | Best place for persistent Crow data that can grow over time. |
+The Crow program, package files, and base configuration stay on the node. USB storage is for Crow data, not for moving the application itself.
 
-The USB storage feature mostly protects **internal flash**, not RAM. It gives Crow a safer place to store things that grow.
+## Why USB storage matters
 
-## What should stay on internal node storage
+Internal node flash is fine for light use. Text messages are small, and Crow does not need a large database to run.
 
-Keep these on the node:
+USB storage is recommended when the node is expected to handle:
 
-- Crow runtime files
-- package files
-- service/init files
-- minimal configuration needed to boot Crow
-- storage configuration that tells Crow where external storage should be
+- image sharing
+- shared files
+- Winlink forms
+- high-traffic channels
+- event operations
+- long-running public channels
+- node message store / textstore service
+- persistent data across reboots or firmware work
 
-This lets the node boot and lets Crow report a degraded storage state even if the USB drive is missing or unhealthy.
+A USB-backed Crow node is a much better place for history and files than a small flash-only field node.
 
-## What should move to external USB storage
+## USB storage setup
 
-When USB storage is enabled and healthy, Crow should use it for the data layer:
+Crow includes an AREDN USB storage setup script:
 
-| Data type | Preferred USB path | Why |
-| --- | --- | --- |
-| JSON state | `/mnt/crow/data` | Keeps node database, message state, and local data off internal flash. |
-| Message stores | `/mnt/crow/data` | Message history can grow over time. |
-| Node database | `/mnt/crow/data` | Mesh node state is persistent and can become large. |
-| Winlink/forms storage | `/mnt/crow/winlink/forms` | Form packs can take space and are easier to maintain externally. |
-| Uploaded images | `/mnt/crow/images` | Images can quickly fill internal flash. |
-
-The Crow source/runtime stays on internal storage. USB is the persistence/data layer.
-
-## Recommended storage model
-
-| Mode | Use case | Behavior |
-| --- | --- | --- |
-| Internal storage | Lab testing, very small deployments, no image uploads, no persistent form packs. | Crow stores data on the node. Keep retention short. |
-| USB storage | Real AREDN node, field/event deployment, image uploads, Winlink-style forms, or longer message retention. | Crow stores data under `/mnt/crow` and leaves internal flash mostly alone. |
-| Degraded fallback | USB missing, full, not mounted, or not writable. | Crow keeps running with temporary fallback storage and warns that persistence is degraded. |
-
-## Enable external USB storage
-
-Use the Crow command channel or slash-command UI.
-
-| Command | Purpose |
-| --- | --- |
-| `/storage status` | Show active storage mode, root path, image path, mountpoint, and any degraded reason. |
-| `/storage usb scan` | List removable USB storage candidates. |
-| `/storage usb enable` | Enable the configured external USB storage volume. |
-| `/storage usb disable` | Return Crow to internal node storage. |
-| `/storage quota images <mb>` | Set the persistent image quota. |
-
-Equivalent `/cmd` command text:
-
-```text
-storage usb scan
-storage usb enable
-storage status
-storage quota images 64
+```bash
+ssh -p 2222 root@<node-name-or-ip>
+sh /usr/local/crow/platforms/aredn/usb-setup.sh
 ```
 
-## Basic setup process
 
-1. Plug in the USB storage device.
-2. Open Crow.
-3. Run `/storage usb scan`.
-4. Confirm the drive is visible.
-5. Run `/storage usb enable`.
-6. Run `/storage status`.
-7. Confirm Crow reports USB storage active.
-8. Set an image quota with `/storage quota images <mb>`.
-9. Send a test message and upload a small image if image storage is used.
-10. Reboot the node and confirm `/storage status` still shows healthy USB storage.
+Setup examples:
 
-Expected success message:
-
-```text
-USB storage active.
+```bash
+sh /usr/local/crow/platforms/aredn/usb-setup.sh
+sh /usr/local/crow/platforms/aredn/usb-setup.sh format
+sh /usr/local/crow/platforms/aredn/usb-setup.sh format sda1
 ```
 
-## Example configuration
+The script installs USB mass-storage support packages and optional filesystem tools. With `format`, it formats the selected removable drive as ext4 and labels it:
 
-Crow can also be configured through storage settings.
+```text
+CROWDATA
+```
+
+The script refuses to format non-removable devices.
+
+## Using the system
+
+After the USB packages are installed and the drive is attached, use Crow slash commands from the message composer.
+
+Scan for USB storage:
+
+```text
+/storage usb scan
+```
+
+Enable USB storage:
+
+```text
+/storage usb enable
+```
+
+Check current storage state:
+
+```text
+/storage status
+```
+
+Set the image/file quota in megabytes:
+
+```text
+/storage quota images 128
+```
+
+Disable USB mode and return to internal node storage:
+
+```text
+/storage usb disable
+```
+
+## Storage states
+
+Crow reports these storage states:
+
+| State | Meaning |
+|---|---|
+| `internal` | Crow is using the node's built-in storage. |
+| `usb` | Crow is using `/mnt/crow` for persistent Crow data and images. |
+| `degraded` | USB mode was requested, but the USB device is missing, unsafe, not mounted, not writable, or below the minimum free-space threshold. |
+
+A healthy USB setup should look similar to:
+
+```text
+Crow storage: usb
+Mode: usb
+Root: /mnt/crow
+Images: /mnt/crow/images
+Mountpoint: /mnt/crow
+```
+
+If the USB device is missing or unhealthy, Crow keeps the core service running from internal/degraded storage and reports the reason in `/storage status`.
+
+## What Crow does when USB is enabled
+
+When USB mode is active, Crow:
+
+- mounts the drive at `/mnt/crow`
+- expects or creates `/mnt/crow/data`
+- expects or creates `/mnt/crow/images`
+- expects or creates `/mnt/crow/winlink/forms`
+- verifies the storage root is writable
+- checks minimum free space
+- migrates existing internal message data where possible
+- migrates existing temporary image data where possible
+- writes a persistent AREDN/OpenWrt fstab entry for the Crow mount
+- installs a block hotplug helper so the Crow USB device can be mounted when it appears
+
+The default USB label is `CROWDATA`.
+
+## Minimum free space and quota
+
+Crow's AREDN platform code defaults to:
+
+```text
+minimum free space: 16 MB
+image quota:        64 MB
+```
+
+The image quota can be changed from the UI with:
+
+```text
+/storage quota images <mb>
+```
+
+Crow prunes the oldest stored image/binary files when the quota is exceeded.
+
+## Internal flash behavior
+
+By default, Crow stores JSON data in internal flash under `/usr/local/crow/data`. Uploaded images and binary files use temporary node storage unless USB mode is active.
+
+Internal flash is acceptable for:
+
+- low-traffic nodes
+- testing
+- short events
+- normal chat with little or no image sharing
+- bridge nodes that are not acting as message stores
+
+Use USB storage for:
+
+- high-traffic nodes
+- public/event nodes
+- image/file sharing
+- Winlink form use
+- node message stores
+- nodes expected to retain data after reboot or upgrade work
+
+## RAM message mode
+
+Crow still supports RAM-backed message storage:
+
+```json
+{
+  "messages": {
+    "ram": true
+  }
+}
+```
+
+In RAM mode, message files are stored under Crow's temporary runtime tree instead of persistent data storage. This reduces writes to internal flash, but messages do not survive reboot unless they can be restored from a node message store.
+
+Do not use RAM mode as a substitute for USB storage when persistence matters.
+
+## Node message stores / text stores
+
+Crow's node message store feature still uses the Raven config name `textstore`.
+
+A message store keeps recent channel messages available so users who join later, restart, or miss a message can recover recent channel history.
+
+Generic message store for all local channels:
+
+```json
+{
+  "textstore": {
+    "stores": [
+      {
+        "namekey": "*"
+      }
+    ]
+  }
+}
+```
+
+Specific channel with a larger retained history:
+
+```json
+{
+  "textstore": {
+    "stores": [
+      {
+        "namekey": "AREDN og==",
+        "size": 100
+      },
+      {
+        "namekey": "*"
+      }
+    ]
+  }
+}
+```
+
+If `size` is not set, Crow keeps 50 recent messages by default.
+
+A message store should be placed on a normal node with reliable storage. A USB-backed Crow node is preferred.
+
+## Supernode behavior
+
+Crow can run on an AREDN supernode, but a supernode is for relay, not persistent storage.
+
+When Crow detects that it is running on an AREDN supernode, it ignores or removes these runtime config areas:
+
+- `meshtastic`
+- `meshcore`
+- `textstore`
+- `messages`
+
+That means a supernode does not act as a Meshtastic bridge, MeshCore bridge, RAM-message client, or node message store. Put USB-backed message history on a normal Crow node, and put relay work on the supernode.
+
+## Example storage config
+
+Most operators should use `/storage usb enable`. Advanced users can preconfigure storage in `/usr/local/crow/crow.conf.override`:
 
 ```json
 {
@@ -102,134 +252,49 @@ Crow can also be configured through storage settings.
     "mode": "usb",
     "mountpoint": "/mnt/crow",
     "label": "CROWDATA",
-    "image_quota_mb": 64,
+    "image_quota_mb": 128,
     "min_free_mb": 16
   }
 }
 ```
 
-To return to internal node storage:
+Then restart Crow.
 
-```json
-{
-  "storage": {
-    "mode": "internal"
-  }
-}
-```
+## Recommended layouts
 
-## Degraded mode
-
-If USB storage is enabled but unhealthy, Crow should not hard-fail. It should enter degraded mode.
-
-Common degraded causes:
-
-| Cause | What happens | Operator action |
-| --- | --- | --- |
-| USB drive removed | Crow cannot use `/mnt/crow`. | Reattach drive and re-run storage status/enable. |
-| USB not mounted | Storage path is missing. | Check mountpoint and platform support. |
-| USB not writable | Crow cannot persist data safely. | Check filesystem, permissions, and device health. |
-| USB full | Crow cannot safely write new data. | Free space, increase drive size, or reduce quotas. |
-| Low free space | Crow may reject persistent image writes or enter degraded state. | Increase free space or lower stored data volume. |
-
-Degraded fallback paths may use temporary storage such as:
+Small node:
 
 ```text
-/tmp/apps/crow/degraded
-/tmp/apps/crow/images
+Crow app:  internal node storage
+Crow data: internal node storage
+Images:   temporary node storage
+Use for:   light chat/testing
 ```
 
-Temporary fallback storage is not a long-term persistence plan. Treat degraded mode as a warning that the USB data layer needs operator attention.
-
-## Persistent image quota
-
-Images can consume storage quickly. When external storage is active, use an image quota.
-
-Recommended starting point:
+Event or hub node:
 
 ```text
-/storage quota images 64
+Crow app:  internal node storage
+Crow data: /mnt/crow/data
+Images:   /mnt/crow/images
+Winlink:  /mnt/crow/winlink/forms
+Use for:  chat, files, forms, local history
 ```
 
-That sets the image quota to 64 MB. Crow should prune older images first so the Crow-managed image directory stays within the configured limit.
-
-Suggested settings:
-
-| Deployment | Suggested image quota |
-| --- | --- |
-| Low-storage node / testing | 16 MB |
-| Normal field node | 64 MB |
-| Event node with frequent images | 128–256 MB |
-| Large USB drive with image-heavy use | Site policy, but still set a quota |
-
-Do not leave image storage unlimited on a small node.
-
-## RAM guidance
-
-USB storage helps with persistent data, but it does not fix RAM pressure.
-
-To keep RAM use under control:
-
-- avoid very large images;
-- avoid huge form packs with heavy embedded assets;
-- keep message history reasonable;
-- avoid excessive debug logging during normal operation;
-- restart the service after major configuration or form-pack changes;
-- prefer small, text-first Winlink-style forms for field use.
-
-## Flash protection guidance
-
-Internal flash wear and space exhaustion are common risks on small OpenWrt/AREDN nodes.
-
-Use external USB storage when:
-
-- uploaded images are enabled;
-- forms are installed;
-- message history should survive reboots;
-- the node is used for an event or unattended deployment;
-- the node has limited internal free space;
-- multiple users will be sending traffic through the gateway.
-
-Avoid writing high-churn data to internal flash when USB storage is available.
-
-## Health-check checklist
-
-Run this before a real deployment:
+Message-store node:
 
 ```text
-/storage status
-/storage usb scan
-/storage quota images 64
+Crow app:  internal node storage
+Crow data: /mnt/crow/data
+Role:      textstore/node message store
+Use for:   recent channel history
 ```
 
-Confirm:
+Supernode:
 
-- storage mode is `usb` when intended;
-- mountpoint is `/mnt/crow` or the configured mountpoint;
-- data path points to external storage;
-- image path points to external storage;
-- free space is above the configured minimum;
-- storage is not degraded;
-- image quota is set;
-- Crow still starts if the USB drive is temporarily missing.
-
-## Troubleshooting
-
-| Symptom | Likely issue | Fix |
-| --- | --- | --- |
-| `/storage status` shows internal mode | USB storage has not been enabled. | Run `/storage usb scan`, then `/storage usb enable`. |
-| USB drive not listed | Platform does not see the drive or it is not considered removable. | Re-seat drive, check power, filesystem, and platform support. |
-| Storage degraded after reboot | Mountpoint or label mismatch, USB slow to mount, or failed health check. | Run `/storage status`, verify label/mountpoint, and re-enable. |
-| Images disappear after reboot | Crow is using temporary fallback storage. | Fix USB storage and confirm image path points to `/mnt/crow/images`. |
-| Internal flash still filling | Some code path may be writing outside platform storage helpers. | Check image path, logs, and any custom scripts. |
-| UI feels slow or service restarts | RAM pressure, not storage pressure. | Reduce image size, message history, form size, or debug load. |
-
-## Related pages
-
-- [USB Storage](USB-Storage)
-- [Winlink](Winlink)
-- [Strict Gatekeeper](Strict-Gatekeeper)
-
-## Short version
-
-Use USB storage for Crow's growing data: messages, node state, forms, and images. Keep the Crow core on the node. If USB storage fails, Crow should keep running in degraded mode, but operators should fix the external storage before relying on persistence.
+```text
+Crow app:  internal node storage
+Crow data: minimal local runtime data
+Role:      Crow/MeshIP relay
+Do not use for: textstore, Meshtastic bridge, MeshCore bridge, message archive
+```
