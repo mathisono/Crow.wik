@@ -12,7 +12,7 @@ This page covers the user-facing slash commands currently wired into Crow's comm
 | groups | List configured APRS groups and members. |
 | channels | List, join, or leave public channels. |
 | export | Export the current channel log as text or CSV. |
-| backend / backends | List configured APRS backends. |
+| backend / backends | Show backend status for APRS, MeshCore, and Meshtastic backends. |
 | storage | Show and manage Crow storage state on supported platforms. |
 
 ## help
@@ -85,7 +85,25 @@ Notes:
 
 ## backend and backends
 
-List configured APRS backends. Both forms are aliases.
+Show backend status. Both forms are aliases.
+
+The status output is intended to include configured APRS backends plus MeshCore and Meshtastic backend candidates:
+
+- APRS backend names and labels.
+- MeshCore UDP multicast status.
+- MeshCore TCP Companion API status.
+- Meshtastic UDP multicast status.
+- Meshtastic TCP Port API status.
+
+The MeshCore and Meshtastic wrapper modules still select one active backend per family at runtime. The status view can show both the active backend and inactive/configured candidates so operators can see which transport path Crow is using.
+
+Typical states include:
+
+- connected — TCP backend has an active socket.
+- listening — UDP multicast backend has an active socket.
+- configured-inactive — backend is configured but not the selected active backend.
+- not-configured — backend candidate is known but not configured.
+- enabled-no-socket — backend was selected but does not currently have a socket.
 
 ## storage
 
