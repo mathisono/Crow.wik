@@ -12,9 +12,11 @@
 - [LoRa Gateway Tags](LoRa-Gateway-Tags)
 - [Meshtastic API Backend](Meshtastic-API)
 - [Memory Use](Memory-Use)
+- [USB Storage](USB-Storage)
+- [Text Stores](Text-Stores)
+- [Supernodes](Supernodes)
 - [Strict Gatekeeper](Strict-Gatekeeper)
 - [Winlink](Winlink)
-- [USB Storage](USB-Storage)
 
 ## Markdown files
 
@@ -29,6 +31,8 @@
 - `Meshtastic-API.md`
 - `Memory-Use.md`
 - `Strict-Gatekeeper.md`
+- `Supernodes.md`
+- `Text-Stores.md`
 - `USB-Storage.md`
 - `Winlink.md`
 - `_Sidebar.md`
