@@ -75,6 +75,82 @@ Optional address binding:
 }
 ```
 
+## Outbound tagging with Strict Gatekeeper
+
+Strict Gatekeeper and outbound LoRa gateway tags are related, but they are not the same step.
+
+Strict Gatekeeper handles inbound bridge policy. When strict mode accepts Meshtastic or MeshCore ingress, it rewrites accepted text as:
+
+```text
+[SENDER via GATEWAY] original message
+```
+
+For MeshCore group messages with weak group identity, it rewrites accepted text as:
+
+```text
+[SENDER@MCGW-GroupName via GATEWAY] original message
+```
+
+Outbound LoRa gateway tagging is handled later, at the outbound backend wrapper layer, by `lora_outbound_text.uc` and `meshcore_tagged.uc`.
+
+When the MeshCore tagged wrapper is wired in and a text message is sent out to MeshCore, the outbound text is formatted as:
+
+```text
+CALLSIGN@MCGW> message
+```
+
+For example, if Strict Gatekeeper has accepted and annotated a bridged message, and that message is later sent out over a tagged MeshCore backend, the LoRa-side text may look like:
+
+```text
+W6XYZ@MCGW> [KJ6DZB via W6XYZ] radio check from the hill
+```
+
+For a weak-identity MeshCore group bridge message, the text may look like:
+
+```text
+W6XYZ@MCGW> [KJ6DZB@MCGW-TacNet via W6XYZ] radio check
+```
+
+That gives the LoRa side two layers of attribution:
+
+1. `W6XYZ@MCGW>` — the gateway/backend that emitted the LoRa packet
+2. `[KJ6DZB via W6XYZ]` or `[KJ6DZB@MCGW-TacNet via W6XYZ]` — the sender/gateway annotation added by Strict Gatekeeper
+
+Current implementation caveat: the tagged MeshCore wrapper is present in code, but `meshcore_backend.uc` currently imports the raw UDP backend as `meshcore`. Therefore outbound tagging is only active when the MeshCore tagged wrapper is explicitly wired in or the selector is updated to use it.
+
+The MeshCore tagged wrapper:
+
+```text
+meshcore_tagged.uc
+```
+
+wraps only the outbound text path. It does not change UDP receive behavior, channel/key handling, or router-level gatekeeper behavior.
+
+### MeshCore tag config
+
+When using the tagged wrapper, these optional `meshcore` fields control tag selection and payload budget:
+
+```json
+{
+  "meshcore": {
+    "enabled": true,
+    "bridgekey": "REPLACE_WITH_MESHCORE_BRIDGE_PUBLIC_KEY",
+    "gateway_index": 0,
+    "gateway_tag_max_payload": 150
+  }
+}
+```
+
+Expected tags:
+
+| `gateway_index` | Tag |
+|---:|---|
+| `0` | `MCGW` |
+| `1` | `MCG2` |
+| `2` | `MCG3` |
+
+See also: [LoRa Gateway Tags](LoRa-Gateway-Tags) and [Strict Gatekeeper](Strict-Gatekeeper).
+
 ## MeshCore TCP Companion API backend
 
 The TCP API backend is `meshcore_tcp_api.uc`.
@@ -373,6 +449,7 @@ Restart Crow:
 - UDP remains the compatibility path.
 - TCP API is experimental.
 - TCP API outbound send is not implemented yet.
+- Outbound LoRa gateway tags require the tagged wrapper path or a selector update that uses `meshcore_tagged.uc`.
 - Do not treat discovery as complete until `queryDeviceGroups()` actually sends `CMD_GET_CHANNEL` to the radio and parses live responses.
 - Keep raw keys out of logs.
 - Do not bridge encrypted MeshCore traffic into AREDN.
