@@ -11,6 +11,7 @@
 - [APRS Bridge](APRS)
 - [LoRa Gateway Tags](LoRa-Gateway-Tags)
 - [Meshtastic API Backend](Meshtastic-API)
+- [MeshCore Backends](MeshCore-Backends)
 - [Memory Use](Memory-Use)
 - [USB Storage](USB-Storage)
 - [Text Stores](Text-Stores)
@@ -29,6 +30,7 @@
 - `Home.md`
 - `LoRa-Gateway-Tags.md`
 - `Meshtastic-API.md`
+- `MeshCore-Backends.md`
 - `Memory-Use.md`
 - `Strict-Gatekeeper.md`
 - `Supernodes.md`
