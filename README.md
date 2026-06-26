@@ -8,13 +8,15 @@ Crow is the upgraded Raven mesh messaging platform for AREDN, APRS, Meshtastic, 
 
 - [Home](Home.md) — main wiki landing page and full page index
 - [Change Log](Change-Log.md) — Raven-to-Crow feature and documentation tracking
-- [Configuration](Configuration.md) — operator configuration reference
+- [Configuration](Configuration.md) — operator configuration overview
+- [Backend Configuration](Backend-Configuration.md) — backend selector and transport setup
 - [Configuring Channels](Configuring-Channels.md) — channel setup workflow
 - [Command Reference](Command-Reference.md) — user-facing slash commands
 
 ## Bridges and backends
 
 - [APRS Bridge](APRS.md) — APRS-IS, KISS TCP, APRS passcode, groups, and Part 97-safe behavior
+- [Backend Configuration](Backend-Configuration.md) — Meshtastic UDP/API, MeshCore UDP/API, APRS backend setup, mode examples, and backend validation
 - [Backend Selection and Test Deployment](Backend-Selection-and-Deployment.md) — backend selector and deployment validation
 - [LoRa Gateway Tags](LoRa-Gateway-Tags.md) — outbound LoRa gateway tag format
 - [Meshtastic API Backend](Meshtastic-API.md) — experimental Meshtastic TCP Port-API backend notes
@@ -33,6 +35,7 @@ Crow is the upgraded Raven mesh messaging platform for AREDN, APRS, Meshtastic, 
 
 ```text
 APRS.md
+Backend-Configuration.md
 Backend-Selection-and-Deployment.md
 Change-Log.md
 Command-Reference.md
