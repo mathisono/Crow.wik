@@ -19,9 +19,52 @@ KJ6DZB@MTG1> Same message through second Meshtastic backend
 
 ## Why this exists
 
-LoRa-side users need to know that a message came through a gateway and which gateway/backend emitted it. Crow keeps the original sender's callsign at the front of the LoRa text payload and adds a compact backend tag.
+LoRa-side users need to know that a message came through a gateway and which gateway/backend emitted it. Crow keeps the source callsign at the front of the LoRa text payload and adds a compact backend tag.
 
 This is done at the outbound backend layer, not globally in the router, because the backend knows the actual target path.
+
+## Relationship to Strict Gatekeeper
+
+Strict Gatekeeper and LoRa Gateway Tags are separate layers:
+
+| Layer | Direction | Job |
+|---|---|---|
+| Strict Gatekeeper | inbound from Meshtastic/MeshCore into Crow/AREDN | decide whether bridge ingress may be forwarded, then annotate accepted text |
+| LoRa Gateway Tags | outbound from Crow/AREDN toward Meshtastic/MeshCore | mark the LoRa-side packet with the gateway/backend that emitted it |
+
+When Strict Gatekeeper is enabled, accepted inbound bridge text is rewritten as:
+
+```text
+[SENDER via GATEWAY] message
+```
+
+For weak-identity MeshCore group messages, accepted inbound bridge text is rewritten as:
+
+```text
+[SENDER@MCGW-GroupName via GATEWAY] message
+```
+
+When that already-annotated message is later sent out through a tagged LoRa backend, the outbound wrapper adds the LoRa gateway tag in front:
+
+```text
+GATEWAY@MCGW> [SENDER via GATEWAY] message
+```
+
+Example:
+
+```text
+W6XYZ@MCGW> [KJ6DZB via W6XYZ] radio check from the hill
+```
+
+Example for a weak-identity MeshCore group message:
+
+```text
+W6XYZ@MCGW> [KJ6DZB@MCGW-TacNet via W6XYZ] radio check
+```
+
+This is intentionally redundant: the first tag identifies the backend/gateway emitting the LoRa packet, while the bracketed Strict Gatekeeper annotation identifies the apparent sender and gateway policy point that accepted the bridged traffic.
+
+Current implementation caveat: the formatter itself is not conditional on Strict Gatekeeper. If a tagged wrapper is wired in, it tags outbound text handled by that wrapper. Strict Gatekeeper decides whether bridged ingress is allowed and how it is annotated before that outbound step.
 
 ## Hard-coded tag scheme
 
@@ -47,41 +90,41 @@ The numbering intentionally preserves the short primary gateway names:
 
 ## How to enable tagging
 
-Gateway tags are enabled by using the wrapper backend modules instead of importing the raw backend modules directly.
+Gateway tags are enabled by using the wrapper backend modules instead of importing the raw backend modules directly, or by updating the backend selector to use the tagged wrapper.
 
 The raw backends remain available:
 
 ```text
-meshcore_tnc.uc
+meshcore.uc
 meshtastic.uc
 ```
 
 The tagged wrappers are:
 
 ```text
-meshcore_tnc_tagged.uc
+meshcore_tagged.uc
 meshtastic_tagged.uc
 ```
 
-### Enable MeshCore TNC tagging
+### Enable MeshCore UDP tagging
 
-In a test image or branch, change the MeshCore import from:
+The current MeshCore selector imports the raw UDP backend as `meshcore`. To make MeshCore UDP outbound tagging active, wire the selector or router path to use:
 
 ```ucode
-import * as meshcore from "meshcore_tnc";
+import * as meshcore from "meshcore_tagged";
 ```
 
-to:
+instead of:
 
 ```ucode
-import * as meshcore from "meshcore_tnc_tagged";
+import * as meshcore from "meshcore";
 ```
 
 Then set the optional backend index in config:
 
 ```json
 {
-  "meshcore_tnc": {
+  "meshcore": {
     "enabled": true,
     "gateway_index": 0,
     "gateway_tag_max_payload": 150
@@ -133,12 +176,12 @@ Expected tag output:
 
 ### Disable tagging / rollback
 
-Rollback is only an import change.
+Rollback is only an import/selector change.
 
-For MeshCore TNC, switch back to:
+For MeshCore UDP, switch back to:
 
 ```ucode
-import * as meshcore from "meshcore_tnc";
+import * as meshcore from "meshcore";
 ```
 
 For Meshtastic, switch back to:
@@ -173,6 +216,8 @@ msg.data.callsign
 UNKNOWN
 ```
 
+This matters with Strict Gatekeeper enabled because `gatekeeper.uc` sets `msg.originating_callsign` to the gateway callsign after accepting bridged ingress. That means an accepted/annotated bridge message that later exits through a tagged LoRa backend will normally use the gateway callsign in the `CALLSIGN@TAG>` prefix.
+
 It uses `length()` and `substr()` to enforce the backend payload budget.
 
 If the formatted payload would exceed the budget, it truncates the original message text and appends:
@@ -191,24 +236,24 @@ Recommended behavior:
 
 | Backend | Suggested call |
 | --- | --- |
-| MeshCore TNC | `prepare(msg, "meshcore", gateway_index, backend_text_limit)` |
-| Meshtastic | `prepare(msg, "meshtastic", gateway_index, backend_text_limit)` |
+| MeshCore UDP tagged wrapper | `prepare(msg, "meshcore", gateway_index, backend_text_limit)` |
+| Meshtastic tagged wrapper | `prepare(msg, "meshtastic", gateway_index, backend_text_limit)` |
 
 ## Backend ownership
 
-Gateway tagging should happen immediately before the backend packet/TNC encoder.
+Gateway tagging should happen immediately before the backend packet encoder.
 
 Do not inject the tag globally in the router because `msg.transport` describes where the message came from, not where it is going.
 
 Correct placement:
 
 ```text
-AREDN/native message
+AREDN/native or gatekeeper-accepted bridge message
   -> router decides outbound backend
   -> MeshCore or Meshtastic backend chooses gateway tag
   -> lora_outbound_text.prepare(...)
   -> backend packet encoder
-  -> LoRa TNC/backend
+  -> LoRa backend
 ```
 
 ## Debug logging
@@ -257,13 +302,13 @@ The shared formatter module and the tagged wrapper modules have been added to th
 Use the wrappers when you want gateway tags enabled:
 
 ```text
-meshcore_tnc_tagged.uc
+meshcore_tagged.uc
 meshtastic_tagged.uc
 ```
 
 Use the raw modules when you want legacy behavior without outbound gateway tags:
 
 ```text
-meshcore_tnc.uc
+meshcore.uc
 meshtastic.uc
 ```
