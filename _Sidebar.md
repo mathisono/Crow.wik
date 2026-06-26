@@ -5,6 +5,7 @@
 - [Home](Home)
 - [Change Log](Change-Log)
 - [Configuration](Configuration)
+- [Backend Configuration](Backend-Configuration)
 - [Configuring Channels](Configuring-Channels)
 - [Backend Selection and Test Deployment](Backend-Selection-and-Deployment)
 - [Command Reference](Command-Reference)
@@ -22,6 +23,7 @@
 ## Markdown files
 
 - `APRS.md`
+- `Backend-Configuration.md`
 - `Backend-Selection-and-Deployment.md`
 - `Change-Log.md`
 - `Command-Reference.md`
