@@ -147,9 +147,27 @@ This gives operators and downstream readers two important facts:
 
 It also makes after-action review easier because accepted bridge traffic carries visible attribution.
 
-## LoRa Gateway Tags
+## MeshCore group-message annotation
 
-LoRa Gateway Tags are part of the same attribution story as Strict Gatekeeper.
+MeshCore group messages can have weaker identity than direct messages because the group proves shared channel membership, not necessarily a strong individual identity binding.
+
+When a MeshCore group message is marked in metadata as a group/symmetric-key message, Strict Gatekeeper uses a group-aware annotation format:
+
+```text
+[SENDER@MCGW-GroupName via GATEWAY] message
+```
+
+Example:
+
+```text
+[KJ6DZB@MCGW-TacNet via W6XYZ] radio check
+```
+
+This tells downstream readers that the message was accepted through the MeshCore gateway path, came from a MeshCore group context, and was forwarded by the gateway station.
+
+## Outbound LoRa Gateway Tags
+
+LoRa Gateway Tags are part of the same attribution story as Strict Gatekeeper, but they happen at a different layer.
 
 Strict Gatekeeper handles **inbound bridge safety** by filtering Meshtastic/MeshCore ingress and rewriting accepted traffic as:
 
@@ -157,11 +175,31 @@ Strict Gatekeeper handles **inbound bridge safety** by filtering Meshtastic/Mesh
 [SENDER via GATEWAY] message
 ```
 
+or, for MeshCore group messages:
+
+```text
+[SENDER@MCGW-GroupName via GATEWAY] message
+```
+
 LoRa Gateway Tags handle **outbound LoRa-side attribution** by marking cleartext gateway-originated messages sent out to local LoRa networks as:
 
 ```text
 CALLSIGN@TAG> message
 ```
+
+If a Strict Gatekeeper-accepted message later exits through a tagged LoRa backend, the combined packet text can look like:
+
+```text
+W6XYZ@MCGW> [KJ6DZB via W6XYZ] radio check from the hill
+```
+
+If the accepted message was a MeshCore group message, the combined packet text can look like:
+
+```text
+W6XYZ@MCGW> [KJ6DZB@MCGW-TacNet via W6XYZ] radio check
+```
+
+Current implementation note: outbound tag formatting is done by `lora_outbound_text.uc` through tagged backend wrappers such as `meshcore_tagged.uc` and `meshtastic_tagged.uc`. The formatter itself is not conditional on Strict Gatekeeper; if the tagged wrapper is wired in, it tags outbound text handled by that wrapper. Strict Gatekeeper decides what bridged ingress is allowed and how accepted text is annotated before outbound tagging.
 
 Examples:
 
