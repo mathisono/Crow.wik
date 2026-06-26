@@ -60,16 +60,44 @@ When USB storage is healthy, Crow uses:
 
 The Crow runtime, package files, and minimal configuration remain on internal node storage.
 
+## Winlink/form storage
+
+Winlink forms are routed through the active Crow storage root.
+
+The Winlink code asks for relative paths under:
+
+```text
+winlink/forms
+```
+
+The AREDN platform maps those paths to:
+
+```text
+/storage-root/winlink/forms
+```
+
+So the active form path is:
+
+| Storage state | Form path |
+|---|---|
+| internal | `/usr/local/crow/winlink/forms` |
+| USB active | `/mnt/crow/winlink/forms` |
+| degraded USB | `/usr/local/crow/winlink/forms` |
+
+When USB storage is activated, the platform creates `/mnt/crow/winlink/forms` and attempts to copy existing internal Winlink form subdirectories into the USB form directory.
+
+See also: [Winlink](Winlink.md).
+
 ## Degraded mode
 
-Crow periodically verifies that the USB volume is mounted, writable, and has enough free space. If the check fails, the platform switches to degraded mode:
+Crow verifies that the USB volume is mounted, writable, and has enough free space. If the check fails, the platform switches to degraded mode:
 
 - the core service remains running
-- the user is alerted that storage is degraded
-- temporary fallback storage is used under `/tmp/apps/crow/degraded`
+- the storage state reports `degraded` with a reason
+- normal Crow data and Winlink/form paths fall back to the internal storage root, `/usr/local/crow`
 - image uploads fall back to `/tmp/apps/crow/images`
 
-This protects the node from a hard failure when a USB stick is removed, fails, or fills up.
+This protects the node from a hard failure when a USB stick is removed, fails, or fills up. It also means Winlink forms are not read from `/mnt/crow/winlink/forms` while USB storage is degraded; they fall back to the internal form path until USB storage is restored.
 
 ## Persistent image quota
 
