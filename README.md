@@ -1,8 +1,8 @@
 # Crow Wiki
 
-This repository is the editable documentation landing area for the Crow mesh messaging project.
+This repository is a documentation landing area for the Crow mesh messaging project.
 
-Crow is the upgraded Raven mesh messaging platform for AREDN, APRS, Meshtastic, MeshCore, Winlink-style forms, and related mesh workflows.
+Crow is the upgraded Raven mesh messaging platform for AREDN, APRS, Meshtastic, MeshCore, Winlink-style forms, and related mesh messages workflows.
 
 ## Start here
 
