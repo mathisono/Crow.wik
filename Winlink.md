@@ -38,19 +38,82 @@ When a form is opened, Crow fills common fields from local node information wher
 
 ## Storage location
 
-On internal storage, Winlink form storage uses:
+Winlink forms use Crow's platform storage path instead of hard-coding one physical directory in `winlink.uc`.
+
+The Winlink module asks the platform for relative paths such as:
+
+```text
+winlink/forms/<form-directory>/<form-file>
+```
+
+On internal storage, the AREDN platform maps that to:
 
 ```text
 /usr/local/crow/winlink/forms
 ```
 
-When USB storage is enabled, Crow uses:
+When USB storage is enabled and healthy, the AREDN platform changes the active storage root to `/mnt/crow`, so the same Winlink relative path maps to:
 
 ```text
 /mnt/crow/winlink/forms
 ```
 
 USB storage is recommended for Winlink because forms are larger and more operationally important than normal chat messages.
+
+## Code-verified USB behavior
+
+The current code is consistent with USB-backed Winlink form storage.
+
+`winlink.uc` uses the relative constant:
+
+```ucode
+const WINLINK_FORMS_DIR = "winlink/forms";
+```
+
+and reads form assets through platform helpers:
+
+```ucode
+platform.dirtree(WINLINK_FORMS_DIR)
+platform.loadbinary(`${WINLINK_FORMS_DIR}/${dir}/${file}`)
+platform.loadbinary(`${WINLINK_FORMS_DIR}/${forms[id]?.post}`)
+platform.loadbinary(`${WINLINK_FORMS_DIR}/${forms[id]?.view}`)
+```
+
+On AREDN, the platform storage path function treats any path beginning with `winlink/` as storage-root relative:
+
+```ucode
+if (index(name, "winlink/") === 0) {
+    return `${storageRoot}/${name}`;
+}
+```
+
+That means:
+
+| Storage state | `storageRoot` | Winlink forms path |
+|---|---|---|
+| internal | `/usr/local/crow` | `/usr/local/crow/winlink/forms` |
+| USB active | `/mnt/crow` | `/mnt/crow/winlink/forms` |
+| degraded USB | internal fallback root | `/usr/local/crow/winlink/forms` |
+
+The USB activation path also creates the required form directory:
+
+```text
+/mnt/crow/winlink/forms
+```
+
+and attempts to migrate existing internal Winlink form subdirectories from:
+
+```text
+/usr/local/crow/winlink/forms
+```
+
+to:
+
+```text
+/mnt/crow/winlink/forms
+```
+
+So the operator-facing claim is correct: when Crow USB storage is active, Winlink forms are stored and loaded from `/mnt/crow/winlink/forms`.
 
 ## Recommended setup
 
@@ -70,6 +133,8 @@ USB storage is recommended for Winlink because forms are larger and more operati
 ```text
 /mnt/crow/winlink/forms
 ```
+
+6. Confirm form directories were copied or installed under the active form path.
 
 ## Good Winlink nodes
 
