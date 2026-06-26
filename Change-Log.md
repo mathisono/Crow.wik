@@ -6,6 +6,33 @@ This page tracks the practical changes from Raven to Crow, including code work, 
 
 Crow is the rebranded and expanded home for the Raven mesh messaging work. The goal is to keep Raven's useful AREDN messaging base while adding clearer operator controls, APRS support, USB-attached storage, and better Part 97-aware bridge behavior.
 
+## 2026-06-25
+
+### Crow: fix USB setup script Crow path
+**Crow commit:** `dd82ff90`
+
+- Updated `platforms/aredn/usb-setup.sh` usage text from the legacy Raven path to the current Crow path:
+  - old: `/usr/local/raven/platforms/aredn/usb-setup.sh`
+  - new: `/usr/local/crow/platforms/aredn/usb-setup.sh`
+- No storage behavior changed. This was a documentation/path cleanup inside the script.
+- **Files changed:** `platforms/aredn/usb-setup.sh`
+
+### Crow: fix README wiki link display
+**Crow commit:** `18e1cae`
+
+- Fixed the visible README documentation URL so it points to `mathisono/Crow/wiki` instead of the misspelled `mathison/Crow/wiki`.
+- The link target was already correct; the displayed text was corrected.
+- **Files changed:** `README.md`
+
+### Wiki draft: storage, supernode, text store, and Winlink refresh
+**Wiki status:** draft prepared; needs wiki commit
+
+- Rewrote `Memory-Use.md` around Crow's current storage behavior: internal storage, USB storage, degraded mode, image quota, RAM message mode, Winlink form storage, and message-store behavior.
+- Added/updated `Supernodes.md` using the original Raven source material and Crow code behavior. Supernodes auto-detect from AREDN config, relay MeshIP traffic, and intentionally do not act as message/text stores.
+- Added/updated `Text-Stores.md` / node message store documentation using the original Raven Text Stores source material and Crow code behavior. Text stores use `platform.store("textstore.<namekey>")`, so they automatically use `/mnt/crow/data` when USB storage is active.
+- Updated `Winlink.md` from placeholder status into a Crow-specific form UI and storage page based on current `winlink.uc` behavior.
+- Home and sidebar should be updated to include `Supernodes.md` and `Text-Stores.md` if those pages are kept as canonical pages.
+
 ## Raven → Crow overview
 
 | Area | Raven behavior | Crow change | Status / notes |
@@ -37,183 +64,3 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 ## Meshtastic API backend notes
 
 Crow now has a separate experimental `meshtastic_API.uc` backend for direct TCP Port-API testing. The original `meshtastic.uc` UDP/multicast backend remains the stable production path unless the router is deliberately changed.
-
-Current Meshtastic API support:
-
-- TCP connection to a Meshtastic node, default port `4403`;
-- Port-API frame parsing using the `0x94 0xc3` frame header;
-- `FromRadio.packet` decode for inbound packets;
-- `ToRadio.packet` envelope for outbound packets;
-- existing Crow channel/hash mapping for packets after decode.
-
-Not supported yet:
-
-- automatic discovery of the node's configured Meshtastic channels;
-- automatic Crow channel creation from the Meshtastic node channel list;
-- bidirectional channel sync;
-- periodic channel refresh;
-- pushing Crow channel changes back to the Meshtastic node.
-
-Do not document Meshtastic auto channel discovery or channel sync as supported until the code exists and has been tested with real Meshtastic hardware.
-
-## APRS backend change notes
-
-Crow's APRS work should use the old Raven `pt97-compliance` APRS backend as the current implementation baseline.
-
-Expected Crow APRS features:
-
-- APRS-IS backend support;
-- APRS-IS `passcode` support;
-- default `passcode: "-1"` behavior when no passcode is configured;
-- KISS TCP backend support for Dire Wolf or similar TNCs;
-- TNC2-style TCP text backend support;
-- named multi-backend configuration with `aprs.backends`;
-- backward compatibility for old single `aprs.backend` configuration;
-- per-channel backend binding with `channels[].backend`;
-- APRS group membership and group send behavior;
-- backend-aware `/join #group backend=NAME CALL1 CALL2 message` behavior;
-- `/backend` and `/backends` listing support;
-- AREDN-only / `og==` behavior for APRS-related channels.
-
-Important release check:
-
-```text
-grep -n "passcode" aprs.uc
-grep -n "cfg.backends\|cfg.backend" aprs.uc
-grep -n "getBackendNames\|updateChannelBackend\|sendToGroup" aprs.uc
-```
-
-If these checks fail, Crow is still using the old single-backend APRS file and the Raven APRS restoration is not complete.
-
-## APRS group messaging changes
-
-Crow's intended APRS workflow supports both direct messages and group-like behavior.
-
-| User action | Form | Meaning |
-| --- | --- | --- |
-| Direct APRS message | `@CALL message` | Send one APRS message to one station. |
-| Group send | `#group message` | Send text to members of an existing APRS group. |
-| Inline group list | `#group CALL1 CALL2 message` | Send to listed callsigns without permanently changing all config. |
-| Runtime group create/update | `join #group CALL1 CALL2 message` | Create/update an APRS group and send. |
-| Slash-command group/channel create | `/join #group CALL1 CALL2 message` | Create an AREDN-only channel and APRS group together. |
-| Backend-specific group/channel create | `/join #group backend=NAME CALL1 CALL2 message` | Bind a group/channel to a named APRS backend. |
-
-## Slash command changes
-
-| Command | Purpose |
-| --- | --- |
-| `/help` | Show available commands. |
-| `/join #name` | Join or create a shared channel. |
-| `/join %name` | Join or create an AREDN-only channel. |
-| `/join #name CALL1 CALL2 message` | Create APRS group/channel and send an initial message. |
-| `/join #name backend=NAME CALL1 CALL2 message` | Create APRS group/channel bound to a named backend. |
-| `/leave #name` | Leave a channel and remove the matching APRS group when present. |
-| `/groups` | List APRS groups. |
-| `/backend` / `/backends` | List configured APRS backends. |
-| `/channels` | List local public channels. |
-| `/channels world` | List mesh-wide public channels through the bridge path. |
-| `/channels join #name` | Join a named channel using derived key behavior. |
-| `/channels join name key` | Join a channel using explicit name/key. |
-| `/channels leave name` | Leave a channel. |
-| `/export`, `/export text`, `/export csv` | Export current channel log. |
-| `/storage status` | Show active storage mode and paths. |
-| `/storage usb scan` | Find removable USB storage candidates. |
-| `/storage usb enable` | Enable USB storage mode. |
-| `/storage usb disable` | Return to internal storage. |
-| `/storage quota images <mb>` | Set persistent image quota. |
-
-## Strict Gatekeeper changes
-
-Strict Gatekeeper is now treated as a first-class Crow safety feature instead of a short code note. It is present in the codebase and documented as a **fail-closed bridge control** for Meshtastic and MeshCore traffic entering AREDN or other amateur-radio paths.
-
-The goal is to keep Crow from becoming a blind automatic forwarding gateway. When a non-amateur mesh network feeds Crow, the gateway should not automatically retransmit anything that is encrypted, non-text, unidentified, or outside the local operator policy.
-
-### What changed
-
-| Feature | Crow behavior | Why it matters |
-| --- | --- | --- |
-| Fail-closed filtering | Drops traffic that does not pass policy before it enters the routing queue. | Safer default for public or unattended gateways. |
-| Encrypted packet handling | Drops encrypted Meshtastic packets before bridge forwarding. | Avoids carrying obscured content into Part 97 amateur paths. |
-| Text-only forwarding | Drops non-text bridged packets. | Keeps the gateway focused on human-readable traffic. |
-| Sender callsign check | Requires a callsign-looking sender identity. | Makes forwarded traffic more traceable to an apparent operator. |
-| Callsign whitelist | Allows `allowed_callsigns` to restrict bridge senders. | Prevents unknown stations from using the gateway as a public relay. |
-| Gateway annotation | Rewrites accepted messages as `[SENDER via GATEWAY] message`. | Identifies both the apparent originator and the forwarding gateway. |
-| Operator documentation | Wiki now includes Part 97 auto-forwarding explanation and operating tables. | Gives control operators practical guidance instead of burying the behavior in code. |
-
-### Part 97 auto-forwarding rationale
-
-Crow can act like a message forwarding system when it accepts traffic from Meshtastic or MeshCore and then forwards it onto AREDN/amateur-radio paths. That creates an operator-control problem: the gateway station may transmit content that the control operator did not personally type.
-
-Strict Gatekeeper does not make legal decisions by itself, but it gives the operator a software control point:
-
-- do not forward encrypted or hidden content;
-- do not forward non-text payloads;
-- do not forward traffic from unknown or unapproved senders;
-- visibly identify the gateway that accepted the message;
-- make the forwarding path easier to audit after an event.
-
-### Recommended use
-
-| Deployment | Recommended Strict Gatekeeper setting |
-| --- | --- |
-| Lab testing with no RF/AREDN forwarding | Optional. |
-| AREDN-only amateur deployment | Enable with `gateway_callsign`. |
-| Public Meshtastic/MeshCore-to-AREDN bridge | Enable with `gateway_callsign` and `allowed_callsigns`. |
-| Emergency/event bridge | Enable with a preloaded callsign whitelist. |
-| Unattended gateway | Enable, whitelist, and monitor logs. |
-
-### Release check
-
-```text
-grep -n "strict_gatekeeper" gatekeeper.uc config.uc
-grep -n "allowed_callsigns" gatekeeper.uc
-grep -n "filterInboundBridge" gatekeeper.uc router.uc
-grep -n "config._gatekeeper" config.uc meshtastic.uc
-```
-
-If these checks fail, the wiki may describe behavior that is not actually wired into the current Crow build.
-
-## USB attached storage changes
-
-Crow adds an AREDN-focused storage workflow so data can live on attached USB storage while the core app remains on the node.
-
-Expected behavior:
-
-- internal storage remains the fallback;
-- USB storage can be scanned, enabled, and disabled through `/storage` commands;
-- degraded mode is documented for missing or unhealthy USB storage;
-- persistent images can be quota-limited;
-- storage commands are designed to avoid destructive formatting/wipe behavior.
-
-## Release checklist
-
-Before calling a Crow build/release current, verify:
-
-```text
-# APRS code restored
-grep -n "cfg.backends\|getBackendNames\|sendToGroup" aprs.uc
-
-# APRS passcode supported
-grep -n "passcode" aprs.uc
-
-# Strict Gatekeeper present
-grep -n "strict_gatekeeper\|allowed_callsigns\|filterInboundBridge" gatekeeper.uc config.uc router.uc
-
-# Meshtastic API status documented
-grep -n "channel_discovery\|channel_sync\|fromradio\|toradio" meshtastic_API.uc docs/*.md
-
-# USB storage commands present
-grep -n "storage usb\|quota images" commands.uc
-
-# Wiki links current
-git -C ../Crow.wik grep -n "APRS\|Meshtastic API\|Strict Gatekeeper\|USB Storage\|Change Log" Home.md _Sidebar.md
-```
-
-## Known follow-up items
-
-- Confirm the Raven `pt97-compliance/aprs.uc` restoration is actually on Crow `main`.
-- Rename any remaining user-facing `Raven` strings to `Crow` where doing so does not break compatibility.
-- Verify APRS multi-backend code does not reference undefined Crow symbols.
-- Add tests or dry-run checks for `/join #group backend=NAME ...`.
-- Add Meshtastic API channel discovery and read-only channel sync after TCP Port-API hardware tests pass.
-- Add a clear operator example for `allowed_callsigns` and Part 97-safe bridge deployment.
