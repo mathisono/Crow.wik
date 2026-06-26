@@ -8,6 +8,19 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 
 ## 2026-06-25
 
+### Wiki: outbound LoRa gateway tagging with Strict Gatekeeper context
+**Wiki status:** committed to `mathisono/Crow.wik`
+
+- Updated `MeshCore-Backends.md` to explain outbound MeshCore gateway tagging when a gatekeeper-accepted message later exits through a tagged MeshCore backend.
+- Updated `LoRa-Gateway-Tags.md` to document the relationship between Strict Gatekeeper annotations and outbound LoRa gateway tags.
+- Documented the layered format:
+  - outbound backend tag: `GATEWAY@MCGW> message`
+  - strict inbound annotation: `[SENDER via GATEWAY] message`
+  - combined example: `W6XYZ@MCGW> [KJ6DZB via W6XYZ] radio check`
+- Documented weak-identity MeshCore group example: `W6XYZ@MCGW> [KJ6DZB@MCGW-TacNet via W6XYZ] radio check`.
+- Clarified that `lora_outbound_text.uc` is not itself conditional on Strict Gatekeeper. If the tagged wrapper is wired in, it tags outbound text handled by that wrapper. Strict Gatekeeper decides whether bridge ingress is allowed and how accepted text is annotated before the outbound tag step.
+- Noted that the current MeshCore selector uses the raw UDP backend unless `meshcore_tagged.uc` is explicitly wired in or the selector is updated to use it.
+
 ### Wiki: MeshCore backend documentation audit
 **Wiki status:** committed to `mathisono/Crow.wik`
 
@@ -44,36 +57,3 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 - Added/updated `Text-Stores.md` / node message store documentation using the original Raven Text Stores source material and Crow code behavior. Text stores use `platform.store("textstore.<namekey>")`, so they automatically use `/mnt/crow/data` when USB storage is active.
 - Updated `Winlink.md` from placeholder status into a Crow-specific form UI and storage page based on current `winlink.uc` behavior.
 - Updated `Home.md` and `_Sidebar.md` to include `Supernodes.md` and `Text-Stores.md` as canonical pages.
-
-## Raven → Crow overview
-
-| Area | Raven behavior | Crow change | Status / notes |
-| --- | --- | --- | --- |
-| Project identity | Raven naming and raven icon assets. | Rebranded as Crow with Crow UI/icon assets. | UI assets are being renamed/replaced as `crow.png` and `crow.svg`. |
-| Messaging goal | Mesh messaging foundation. | Unified decentralized messaging platform for AREDN and related mesh transports. | Crow is intended to unify AREDN, Meshtastic, MeshCore, legacy MeshChat, Winlink, and APRS workflows. |
-| APRS backend | Raven `pt97-compliance` branch had richer APRS work. | Crow needs the Raven APRS backend restored as the current `aprs.uc`. | Target is Raven `pt97-compliance/aprs.uc`. Verify that `main` contains the restored code before release. |
-| APRS passcode | Raven APRS-IS backend supported `passcode`. | Crow docs now explicitly document APRS-IS passcode setup. | Use `aprs.backend.passcode` for single-backend compatibility and `aprs.backends.<name>.passcode` for named backends once multi-backend code is active. |
-| APRS groups | Raven supported APRS group messaging and repeat behavior. | Crow wiki now documents APRS groups, inline APRS message forms, and `/join` group creation. | Code should be verified against the Raven APRS implementation. |
-| Meshtastic API backend | Raven used the UDP/multicast Meshtastic backend. | Crow has an experimental separate `meshtastic_API.uc` TCP Port-API backend. | Current code supports first-pass TCP RX/TX plumbing only. Auto channel discovery and channel sync are **not implemented yet**. See [Meshtastic API Backend](Meshtastic-API). |
-| Slash commands | Earlier command set was smaller and less documented. | Crow wiki now has a user-facing command reference. | Includes `/help`, `/join`, `/leave`, `/groups`, `/channels`, `/backend`, `/backends`, `/export`, and `/storage`. |
-| Strict Gatekeeper | Not clearly operator-documented. | Crow includes `gatekeeper.uc` and expanded wiki guidance. | Handles fail-closed bridge filtering for Meshtastic/MeshCore ingress. |
-| Part 97 bridge policy | Needed clearer operator explanation. | Crow wiki now explains automatic forwarding risk and gateway responsibilities in plain language. | See Strict Gatekeeper page. |
-| USB attached storage | Not part of the older Raven baseline. | Crow adds documented USB storage workflows for AREDN nodes. | Supports internal storage fallback, USB scan/enable/disable, and image quota behavior. |
-| Auto-update cron | Legacy Raven cron updater existed in packaging. | Crow removed the auto-update cron behavior. | This avoids surprise unattended package replacement. |
-
-## Documentation changes
-
-| Wiki page | Purpose | Status |
-| --- | --- | --- |
-| [Home](Home) | Main wiki landing page and page index. | Updated to link active documentation pages. |
-| [Command Reference](Command-Reference) | User-facing slash commands and APRS chat command forms. | Added/updated. |
-| [APRS Bridge](APRS) | APRS-IS, KISS TCP, APRS passcode, groups, Part 97-safe APRS behavior. | Added. |
-| [Meshtastic API Backend](Meshtastic-API) | Experimental TCP Port-API backend status and channel discovery/sync limitations. | Added. |
-| [MeshCore Backends](MeshCore-Backends) | MeshCore UDP and TCP Companion API behavior. | Added. |
-| [Strict Gatekeeper](Strict-Gatekeeper-Mode) | Fail-closed bridge filtering and Part 97 auto-forwarding explanation. | Expanded with tables and operator guidance. |
-| [USB Storage](USB-Storage) | AREDN USB data storage and persistent image storage behavior. | Added/updated. |
-| [Change Log](Change-Log) | This page. | Added/updated. |
-
-## Meshtastic API backend notes
-
-Crow now has a separate experimental `meshtastic_API.uc` backend for direct TCP Port-API testing. The original `meshtastic.uc` UDP/multicast backend remains the stable production path unless the router is deliberately changed.
