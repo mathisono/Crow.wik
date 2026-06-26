@@ -1,38 +1,90 @@
 # Configuration
 
-This page documents the operator-facing Crow configuration patterns for selecting backends and testing the TCP/API backends.
+This page is the operator-facing overview of Crow configuration. It explains the main config blocks and points to the deeper pages that own each area.
 
-Crow uses backend selector modules so the original UDP backends remain the default while API backends can be enabled explicitly.
+Use this page when you need to answer:
 
-## Backend selector model
-
-`router.uc` imports selector modules:
-
-```ucode
-import * as meshtastic from "meshtastic_backend";
-import * as meshcore from "meshcore_backend";
+```text
+What config block controls this feature?
+Where should I go for the detailed setup page?
 ```
 
-The selector modules choose the concrete backend from config.
+For backend selector details, UDP/API transport setup, and validation commands, see [Backend Configuration](Backend-Configuration.md).
 
-| Transport | Default backend | Experimental API backend |
-| --- | --- | --- |
-| Meshtastic | `meshtastic.uc` UDP/multicast | `meshtastic_API.uc` TCP Port-API |
-| MeshCore | `meshcore.uc` UDP/multicast | `meshcore_tcp_api.uc` TCP Companion API |
+For channel creation, joining, AREDN-only channels, APRS groups, and channel mapping, see [Configuring Channels](Configuring-Channels.md).
 
-Default rule:
+## Configuration layers
 
-- If the normal `meshtastic` block is enabled, Crow uses Meshtastic UDP.
-- If the normal `meshcore` block is enabled and no explicit API selector is set, Crow uses MeshCore UDP.
-- API backends are opt-in.
-- For test deployments, disable the UDP block before enabling the matching API block, unless using the explicit `backend` selector.
+Crow configuration is easiest to understand in layers:
 
-## Keep original UDP backends enabled
+| Layer | What it controls | Main page |
+|---|---|---|
+| Node identity | local callsign / gateway identity | this page, [Strict Gatekeeper](Strict-Gatekeeper.md) |
+| Backends | how Crow talks to Meshtastic, MeshCore, APRS, and API transports | [Backend Configuration](Backend-Configuration.md) |
+| Channels | which message groups, keys, and channel mappings Crow routes | [Configuring Channels](Configuring-Channels.md) |
+| Bridge safety | fail-closed handling for bridged LoRa traffic | [Strict Gatekeeper](Strict-Gatekeeper.md) |
+| Storage | internal flash, USB storage, image quota, degraded mode | [USB Storage](USB-Storage.md), [Memory Use](Memory-Use.md) |
+| Message stores | node text/message stores and retained channel history | [Text Stores](Text-Stores.md) |
+| Forms | Winlink-style form inventory and storage | [Winlink](Winlink.md) |
 
-Use this when you want the original compatibility behavior.
+## Common config files
+
+Crow deployments commonly use a base config plus an override file. The exact file location depends on the platform package, but the practical rule is:
+
+- keep package defaults in the base config;
+- put local/operator changes in the override config;
+- keep secrets and local callsign choices out of generic docs/examples.
+
+On AREDN/OpenWrt nodes, restart Crow after changing config:
+
+```sh
+/etc/init.d/crow restart
+```
+
+Then watch logs:
+
+```sh
+logread -f | grep -Ei 'crow|meshtastic|meshcore|aprs|gatekeeper|storage'
+```
+
+## Minimal node identity
+
+Most real deployments should set a callsign at the top level.
 
 ```json
 {
+  "callsign": "KJ6DZB"
+}
+```
+
+If Strict Gatekeeper is enabled, `strict_gatekeeper.gateway_callsign` can override the top-level callsign for gateway annotation.
+
+See: [Strict Gatekeeper](Strict-Gatekeeper.md).
+
+## Top-level config blocks
+
+| Block | Purpose | Detailed page |
+|---|---|---|
+| `callsign` | Local node/gateway callsign. | this page, [Strict Gatekeeper](Strict-Gatekeeper.md) |
+| `channels` | Local channel list, namekeys, channel metadata, optional backend mappings. | [Configuring Channels](Configuring-Channels.md) |
+| `meshtastic` | Original Meshtastic UDP backend and selector options. | [Backend Configuration](Backend-Configuration.md), [Meshtastic API Backend](Meshtastic-API.md) |
+| `meshtastic_api` | Experimental Meshtastic TCP Port-API backend. | [Backend Configuration](Backend-Configuration.md), [Meshtastic API Backend](Meshtastic-API.md) |
+| `meshcore` | Original MeshCore UDP backend and selector options. | [Backend Configuration](Backend-Configuration.md), [MeshCore Backends](MeshCore-Backends.md) |
+| `meshcore_tcp_api` | Experimental MeshCore TCP Companion API backend. | [Backend Configuration](Backend-Configuration.md), [MeshCore Backends](MeshCore-Backends.md) |
+| `aprs` | APRS-IS, KISS TCP, APRS groups, APRS backend selection. | [APRS Bridge](APRS.md), [Backend Configuration](Backend-Configuration.md) |
+| `strict_gatekeeper` | Fail-closed inbound bridge policy and gateway annotation. | [Strict Gatekeeper](Strict-Gatekeeper.md) |
+| `storage` | Internal/USB storage mode, mount point, quota, degraded mode. | [USB Storage](USB-Storage.md), [Memory Use](Memory-Use.md) |
+| `messages` | Message behavior, including RAM mode where supported. | [Memory Use](Memory-Use.md) |
+| `textstore` | Node message/text stores for retained channel history. | [Text Stores](Text-Stores.md) |
+| `winlink` | Winlink-style form behavior and form storage. | [Winlink](Winlink.md) |
+
+## Minimal backend examples
+
+For the original compatibility path:
+
+```json
+{
+  "callsign": "KJ6DZB",
   "meshtastic": {
     "enabled": true
   },
@@ -43,348 +95,101 @@ Use this when you want the original compatibility behavior.
 }
 ```
 
-Expected logs:
+For TCP/API backend testing, do not put the long setup here. Use [Backend Configuration](Backend-Configuration.md) so the selector details, limitations, and validation commands stay in one place.
 
-```text
-meshtastic_backend: selected udp backend
-meshcore_backend: selected udp backend
-```
+## Minimal channel example
 
-## Meshtastic TCP Port-API backend
-
-Use this only for Meshtastic API testing.
+Channels determine which message groups/keys are available after the backend is running.
 
 ```json
 {
-  "meshtastic": {
-    "enabled": false
-  },
-  "meshtastic_api": {
+  "channels": [
+    { "namekey": "AREDN og==", "telemetry": false }
+  ]
+}
+```
+
+For channel naming, shared-key channels, AREDN-only channels, APRS groups, and MeshCore slot mapping, see [Configuring Channels](Configuring-Channels.md).
+
+## Strict Gatekeeper example
+
+Use Strict Gatekeeper on public, event, or unattended bridge gateways.
+
+```json
+{
+  "callsign": "W6XYZ",
+  "strict_gatekeeper": {
     "enabled": true,
-    "host": "192.168.4.1",
-    "port": 4403,
-    "channel_discovery": true,
-    "channel_sync": "read_only",
-    "channel_refresh_seconds": 600
+    "gateway_callsign": "W6XYZ",
+    "allowed_callsigns": ["KN6PLV", "KJ6DZB"]
   }
 }
 ```
 
-Replace `192.168.4.1` with the Meshtastic node IP.
+See: [Strict Gatekeeper](Strict-Gatekeeper.md).
 
-Expected logs:
+## Storage example
 
-```text
-meshtastic_backend: selected tcp-port-api backend
-meshtastic_API: connected tcp-port-api 192.168.4.1:4403
-meshtastic_API: config request sent id=... reason=connect
-```
-
-Important:
-
-- `channel_discovery` is disabled by default.
-- `channel_sync` currently supports `off` or `read_only` only.
-- Read-only discovery does not write Crow config files.
-- Read-only discovery does not push channel config back to the Meshtastic radio.
-- Raw PSKs must not be logged.
-
-## MeshCore backends
-
-See [MeshCore Backends](MeshCore-Backends.md) for the full operator and code-behavior page.
-
-Crow has two MeshCore paths:
-
-| Path | Module | Status |
-|---|---|---|
-| Original UDP bridge | `meshcore.uc` | Compatibility path; supports inbound and outbound MeshCore bridge packets. |
-| TCP Companion API | `meshcore_tcp_api.uc` | Experimental receive/decode path for cleartext direct and group text frames. Outbound send is not implemented yet. |
-
-The active path is selected by `meshcore_backend.uc`.
-
-## MeshCore UDP backend
-
-The UDP backend uses the original MeshCore bridge packet path:
-
-```text
-multicast: 224.0.0.69
-port:      4402
-```
-
-Use this when you want the original behavior and outbound MeshCore sending.
+USB storage is configured separately from channels and backends.
 
 ```json
 {
-  "meshcore": {
-    "enabled": true,
-    "bridgekey": "REPLACE_WITH_MESHCORE_BRIDGE_PUBLIC_KEY"
-  },
-  "meshcore_tcp_api": {
-    "enabled": false
+  "storage": {
+    "mode": "usb",
+    "mountpoint": "/mnt/crow",
+    "label": "CROWDATA",
+    "image_quota_mb": 128,
+    "min_free_mb": 16
   }
 }
 ```
 
-Optional multicast interface binding:
+See: [USB Storage](USB-Storage.md) and [Memory Use](Memory-Use.md).
+
+## Text store example
+
+Node message stores are configured under `textstore`.
 
 ```json
 {
-  "meshcore": {
-    "enabled": true,
-    "bridgekey": "REPLACE_WITH_MESHCORE_BRIDGE_PUBLIC_KEY",
-    "address": "192.168.1.10"
+  "textstore": {
+    "stores": [
+      { "namekey": "AREDN og==", "size": 100 },
+      { "namekey": "*" }
+    ]
   }
 }
 ```
 
-Expected selector log:
+See: [Text Stores](Text-Stores.md).
 
-```text
-meshcore_backend: selected udp backend
-```
+## Validation checklist
 
-## MeshCore TCP Companion API backend
+After changing configuration:
 
-Use this section to test the experimental MeshCore TCP Companion API backend instead of the original MeshCore UDP backend.
+1. Restart Crow.
+2. Watch logs for parse errors or backend selection errors.
+3. Confirm the intended backend is selected.
+4. Confirm channels appear in the UI or `/channels` output.
+5. Confirm Strict Gatekeeper behavior if bridge traffic is enabled.
+6. Confirm no raw PSKs, MeshCore secret keys, or private local details are logged.
 
-### 1. Disable the original MeshCore UDP backend
-
-Set the normal `meshcore` block to disabled:
-
-```json
-{
-  "meshcore": {
-    "enabled": false
-  }
-}
-```
-
-This prevents Crow from also opening the legacy MeshCore UDP/multicast socket.
-
-### 2. Enable the MeshCore TCP API backend
-
-Add a `meshcore_tcp_api` block:
-
-```json
-{
-  "meshcore": {
-    "enabled": false
-  },
-  "meshcore_tcp_api": {
-    "enabled": true,
-    "host": "127.0.0.1",
-    "port": 4403
-  }
-}
-```
-
-Use `127.0.0.1` when the MeshCore companion service is on the same node. Use the radio/service IP when it is reachable over the network.
-
-### 3. Restart Crow
-
-On an AREDN/OpenWrt node:
+Useful log command:
 
 ```sh
-/etc/init.d/crow restart
+logread -f | grep -Ei 'crow|meshtastic_backend|meshcore_backend|aprs|gatekeeper|storage'
 ```
 
-Watch logs:
+## Where to go next
 
-```sh
-logread -f | grep -Ei 'crow|meshcore_backend|meshcore_tcp_api|meshcore'
-```
-
-Expected selector log:
-
-```text
-meshcore_backend: selected tcp-api backend
-```
-
-Expected TCP API behavior:
-
-- Crow tries to connect to the configured TCP Companion host/port.
-- On connect, Crow sends a MeshCore Companion `HELLO` frame.
-- The radio is expected to auto-push cleartext direct and group message frames.
-- Direct message frames use command `0x07`.
-- Group/channel message frames use command `0x08`.
-- Decoded inbound messages enter Crow as `transport: "meshcore"` with `backend: "tcp_api"`.
-- Reconnect failures should log cleanly and not crash Crow.
-
-Current TCP API limitations:
-
-- Outbound send is not implemented in `meshcore_tcp_api.uc`.
-- Production outbound MeshCore traffic still requires the UDP backend.
-- Unknown, oversized, malformed, encrypted, advert, telemetry, and handshake frames are dropped rather than routed.
-- Automatic MeshCore group discovery is not complete yet.
-
-### 4. Alternative explicit selector form
-
-Instead of disabling the legacy block, you can explicitly request the API backend:
-
-```json
-{
-  "meshcore": {
-    "enabled": true,
-    "backend": "api"
-  },
-  "meshcore_tcp_api": {
-    "enabled": true,
-    "host": "127.0.0.1",
-    "port": 4403
-  }
-}
-```
-
-Accepted selector values for the MeshCore API path:
-
-```text
-api
-tcp-api
-companion-api
-```
-
-For field testing, the safer form is still:
-
-```json
-"meshcore": { "enabled": false }
-```
-
-plus:
-
-```json
-"meshcore_tcp_api": { "enabled": true, "host": "...", "port": 4403 }
-```
-
-That makes it obvious that only one MeshCore backend should run.
-
-## MeshCore TCP API validation checklist
-
-Run these checks after enabling `meshcore_tcp_api`.
-
-### Confirm config selection
-
-```sh
-logread | grep -Ei 'meshcore_backend|meshcore_tcp_api'
-```
-
-Expected:
-
-```text
-meshcore_backend: selected tcp-api backend
-```
-
-### Confirm UDP backend is not selected
-
-There should be no new log line saying:
-
-```text
-meshcore_backend: selected udp backend
-```
-
-for the same run.
-
-### Confirm TCP reachability
-
-If the TCP API host is not local, test it from the node:
-
-```sh
-nc -vz MESHCORE_API_HOST 4403
-```
-
-Replace `MESHCORE_API_HOST` with the configured host.
-
-### Confirm inbound decode expectations
-
-For TCP API testing, expect only cleartext text frames to route:
-
-| Frame | Command | Current behavior |
-|---|---:|---|
-| direct text | `0x07` | decoded into Crow message |
-| group/channel text | `0x08` | decoded into Crow message with group slot metadata |
-| encrypted DM/blob | `0x90`, `0x91` | dropped early under strict mode; otherwise dropped as unknown |
-| advert / telemetry / handshake / vendor frames | varies | dropped as unknown |
-| oversize frame | payload > 256 bytes | dropped early |
-
-### Confirm Crow stays up
-
-```sh
-/etc/init.d/crow status
-logread | tail -100
-```
-
-Expected:
-
-- no crash loop
-- no syntax error
-- reconnect attempts are bounded
-- API failure does not break Meshtastic, APRS, or MeshIP
-
-## MeshCore TCP discovery status
-
-`meshcore_tcp_discovery.uc` contains the parser and planned slot-discovery flow for MeshCore group memory slots `0-7`.
-
-The intended radio query is:
-
-```text
-CMD_GET_CHANNEL = 0x1F
-```
-
-The expected response is:
-
-```text
-PACKET_CHANNEL_INFO = 0x12
-50-byte response
-slot index 0-7
-32-byte null-padded group name
-16-byte secret key
-```
-
-Current limitation: `queryDeviceGroups()` still contains the slot loop and parser notes, but the actual radio command send is stubbed. It currently returns an empty group list. Do not treat MeshCore discovery as production-ready yet.
-
-## Switching back to MeshCore UDP
-
-To return to the original MeshCore UDP backend:
-
-```json
-{
-  "meshcore": {
-    "enabled": true,
-    "bridgekey": "REPLACE_WITH_MESHCORE_BRIDGE_PUBLIC_KEY"
-  },
-  "meshcore_tcp_api": {
-    "enabled": false
-  }
-}
-```
-
-Restart Crow:
-
-```sh
-/etc/init.d/crow restart
-```
-
-Expected log:
-
-```text
-meshcore_backend: selected udp backend
-```
-
-## Backend mode matrix
-
-| Desired mode | Meshtastic config | MeshCore config |
-| --- | --- | --- |
-| Both legacy UDP | `meshtastic.enabled=true` | `meshcore.enabled=true` |
-| Meshtastic API + MeshCore UDP | `meshtastic.enabled=false`, `meshtastic_api.enabled=true` | `meshcore.enabled=true` |
-| Meshtastic UDP + MeshCore API | `meshtastic.enabled=true` | `meshcore.enabled=false`, `meshcore_tcp_api.enabled=true` |
-| Both API backends | `meshtastic.enabled=false`, `meshtastic_api.enabled=true` | `meshcore.enabled=false`, `meshcore_tcp_api.enabled=true` |
-| Disable Meshtastic | `meshtastic.enabled=false`, no API block | any MeshCore mode |
-| Disable MeshCore | any Meshtastic mode | `meshcore.enabled=false`, no API block |
-
-## Safety notes
-
-- UDP remains the MeshCore compatibility path.
-- MeshCore TCP Companion API is experimental.
-- MeshCore TCP API outbound send is not implemented yet.
-- Only one backend per transport family should be active.
-- Keep raw PSKs and MeshCore secret keys out of logs.
-- Do not treat discovery as persistent channel sync until live radio slot querying is implemented and tested.
-- Do not bridge encrypted MeshCore traffic into AREDN.
+| Task | Go to |
+|---|---|
+| Configure Meshtastic UDP/API, MeshCore UDP/API, APRS backend selection | [Backend Configuration](Backend-Configuration.md) |
+| Join or map channels | [Configuring Channels](Configuring-Channels.md) |
+| Configure APRS-IS, KISS TCP, APRS groups, group repeat | [APRS Bridge](APRS.md) |
+| Configure Meshtastic TCP Port-API discovery | [Meshtastic API Backend](Meshtastic-API.md) |
+| Configure MeshCore UDP/TCP API behavior | [MeshCore Backends](MeshCore-Backends.md) |
+| Configure storage or USB mode | [USB Storage](USB-Storage.md), [Memory Use](Memory-Use.md) |
+| Configure node message stores | [Text Stores](Text-Stores.md) |
+| Configure bridge safety | [Strict Gatekeeper](Strict-Gatekeeper.md) |
+| Configure Winlink-style forms | [Winlink](Winlink.md) |
