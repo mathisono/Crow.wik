@@ -24,14 +24,14 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 - The link target was already correct; the displayed text was corrected.
 - **Files changed:** `README.md`
 
-### Wiki draft: storage, supernode, text store, and Winlink refresh
-**Wiki status:** draft prepared; needs wiki commit
+### Wiki: storage, supernode, text store, and Winlink refresh
+**Wiki status:** committed to `mathisono/Crow.wik`
 
 - Rewrote `Memory-Use.md` around Crow's current storage behavior: internal storage, USB storage, degraded mode, image quota, RAM message mode, Winlink form storage, and message-store behavior.
 - Added/updated `Supernodes.md` using the original Raven source material and Crow code behavior. Supernodes auto-detect from AREDN config, relay MeshIP traffic, and intentionally do not act as message/text stores.
 - Added/updated `Text-Stores.md` / node message store documentation using the original Raven Text Stores source material and Crow code behavior. Text stores use `platform.store("textstore.<namekey>")`, so they automatically use `/mnt/crow/data` when USB storage is active.
 - Updated `Winlink.md` from placeholder status into a Crow-specific form UI and storage page based on current `winlink.uc` behavior.
-- Home and sidebar should be updated to include `Supernodes.md` and `Text-Stores.md` if those pages are kept as canonical pages.
+- Updated `Home.md` and `_Sidebar.md` to include `Supernodes.md` and `Text-Stores.md` as canonical pages.
 
 ## Raven → Crow overview
 
