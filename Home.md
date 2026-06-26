@@ -17,6 +17,7 @@ Crow is the rebranded home for the Raven mesh messaging work. This wiki is the w
 | [APRS Bridge](APRS) | `APRS.md` | APRS-IS, KISS TCP, APRS passcode, APRS group messaging, and Part 97-safe channel behavior. |
 | [LoRa Gateway Tags](LoRa-Gateway-Tags) | `LoRa-Gateway-Tags.md` | Outbound LoRa gateway tag format and hard-coded MeshCore/Meshtastic tag scheme. |
 | [Meshtastic API Backend](Meshtastic-API) | `Meshtastic-API.md` | Experimental Meshtastic TCP Port-API backend status, including channel discovery/sync limitations. |
+| [MeshCore Backends](MeshCore-Backends) | `MeshCore-Backends.md` | Original MeshCore UDP backend, experimental TCP Companion API backend, selector behavior, receive-only API status, and discovery limitations. |
 | [Memory Use](Memory-Use) | `Memory-Use.md` | Internal flash, RAM, USB persistent storage, degraded mode, image quota, Winlink form storage, and message-store storage behavior. |
 | [USB Storage](USB-Storage) | `USB-Storage.md` | AREDN USB data storage, setup commands, degraded-mode behavior, persistent images, and storage quota handling. |
 | [Text Stores](Text-Stores) | `Text-Stores.md` | Raven-style text store/message store behavior, including USB-backed persistent stores on normal Crow nodes. |
@@ -39,6 +40,7 @@ Configuring-Channels.md
 Home.md
 LoRa-Gateway-Tags.md
 Meshtastic-API.md
+MeshCore-Backends.md
 Memory-Use.md
 Strict-Gatekeeper.md
 Supernodes.md
