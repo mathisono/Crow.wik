@@ -8,6 +8,15 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 
 ## 2026-06-25
 
+### Wiki: split configuration and channel setup pages
+**Wiki status:** committed to `mathisono/Crow.wik`
+
+- Added `Backend-Configuration.md` as the operator page for backend selector setup, Meshtastic UDP/API, MeshCore UDP/API, APRS backend setup, backend mode examples, and backend validation.
+- Refocused `Configuration.md` into a top-level configuration overview and index of config blocks.
+- Refocused `Configuring-Channels.md` into a channel-only operator guide covering `/join`, `/leave`, AREDN-only channels, APRS groups, MeshCore slot mapping, text stores, and channel validation.
+- Preserved the backend/API content by moving it into `Backend-Configuration.md` instead of deleting it.
+- Updated `README.md`, `Home.md`, and `_Sidebar.md` so the new page is discoverable.
+
 ### Wiki: outbound LoRa gateway tagging with Strict Gatekeeper context
 **Wiki status:** committed to `mathisono/Crow.wik`
 
