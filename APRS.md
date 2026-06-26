@@ -1,32 +1,24 @@
 # Crow APRS Bridge
 
-Crow can bridge APRS text messages through a configurable APRS backend. APRS traffic is public amateur-radio traffic, so keep transmit disabled until the station callsign, APRS-IS login/passcode or local TNC path, and operator-control requirements are understood.
+Crow can bridge APRS text messages through configurable APRS backends. APRS traffic is public amateur-radio traffic, so keep transmit disabled until the station callsign, APRS-IS login/passcode or local TNC path, and operator-control requirements are understood.
 
 This page folds the Raven `pt97-compliance` APRS notes into the Crow wiki and documents the current Crow APRS backend behavior.
 
 ## Current code status
 
-Crow's current `aprs.uc` supports a single configured APRS backend under `aprs.backend`.
+Crow's current `aprs.uc` supports both:
 
-The current code supports APRS-IS passcode use through:
+- backward-compatible single backend config under `aprs.backend`
+- multi-backend config under `aprs.backends`
 
-```json
-"aprs": {
-  "backend": {
-    "type": "aprsis",
-    "passcode": "REPLACE_WITH_APRS_IS_PASSCODE"
-  }
-}
-```
+If `aprs.backends` is not present, Crow creates a default backend from `aprs.backend`. If neither is present, Crow creates a default APRS-IS backend.
 
-When the backend type is `aprsis`, Crow reads `backend.passcode`, falls back to `-1` when no passcode is configured, and sends the APRS-IS login line using that passcode. Use `tx_enabled: true` only after a valid callsign/passcode/operator-control setup is ready.
-
-The older Raven `pt97-compliance` branch also documented multi-backend APRS support using `aprs.backends` and per-channel backend bindings. That is important design history, but the current Crow `aprs.uc` is still using the older single-backend implementation. Treat the multi-backend examples below as a target/compatibility note until Crow's code is updated to match the old Raven multi-backend implementation.
+Backend names are used for channel bindings, APRS group bindings, `/join #group backend=NAME ...`, and the UI/command backend list.
 
 ## Quick start
 
-1. Add an `aprs` block to `crow.conf`.
-2. Add an APRS channel to the `channels` array.
+1. Add an `aprs` block to `crow.conf` or `crow.conf.override`.
+2. Add or create an APRS channel.
 3. Start Crow and open the web UI.
 4. Type `/help` in the message box for available slash commands.
 5. Keep APRS transmit off until configuration is verified.
@@ -93,10 +85,55 @@ For APRS-IS transmit, configure a valid APRS-IS passcode and set `tx_enabled` to
 
 Notes:
 
-- `passcode` belongs inside `aprs.backend` for the current Crow code.
+- `passcode` belongs inside each APRS backend config.
 - `tx_enabled: false` is the safer default.
 - `passcode: "-1"` or missing passcode should be treated as receive/login-only behavior, not a ready-to-transmit configuration.
 - Do not use APRS to carry encrypted content.
+
+## Multi-backend configuration
+
+Crow can define multiple named APRS backends under `aprs.backends`.
+
+```json
+{
+  "callsign": "N0CALL-10",
+  "aprs": {
+    "enabled": true,
+    "callsign": "N0CALL-10",
+    "channel": "APRS og==",
+    "backends": {
+      "aprsis": {
+        "type": "aprsis",
+        "host": "rotate.aprs2.net",
+        "port": 14580,
+        "passcode": "REPLACE_WITH_APRS_IS_PASSCODE",
+        "filter": "b/N0CALL-4/N0CALL-7",
+        "tx_enabled": false
+      },
+      "direwolf1": {
+        "type": "kiss_tcp",
+        "host": "127.0.0.1",
+        "port": 8001,
+        "kiss_port": 0,
+        "path": [],
+        "tx_enabled": true
+      }
+    }
+  },
+  "channels": [
+    { "namekey": "APRS og==", "telemetry": false, "backend": "aprsis" },
+    { "namekey": "%TacNet og==", "telemetry": false, "backend": "direwolf1" }
+  ]
+}
+```
+
+Crow uses the first backend in `aprs.backends` as the default backend. A channel can override that by setting `backend` in the channel entry. APRS groups can also carry a `backend` property.
+
+Backend resolution order for a group is:
+
+1. `group.backend`, when present and valid
+2. channel backend binding for the current channel
+3. default APRS backend
 
 ## Backend types
 
@@ -137,6 +174,8 @@ Notes:
 }
 ```
 
+Crow treats `tcp_text`, `xastir`, and `yaac` as TNC2-style text connections.
+
 ## Slash command reference
 
 These commands are typed in the Crow message box with a slash prefix.
@@ -164,6 +203,8 @@ APRS group join:
 - Supplying callsigns creates an APRS group and an AREDN-only channel using the unencrypted `og==` key.
 - Callsigns must contain at least one digit, such as `KN6PLV` or `KJ6DZB-4`.
 - Plain words such as `radio`, `check`, or `hello` are treated as message text, not callsigns.
+- `/join` creates APRS groups with `repeat_member_messages: false` by default.
+- Add `backend=NAME` to bind the group/channel to a specific APRS backend.
 
 Examples:
 
@@ -179,8 +220,6 @@ Examples:
 /join #TacNet backend=direwolf1 KN6PLV KJ6DZB-4 radio check
 ```
 
-The `backend=NAME` form is part of the Raven multi-backend design. Current Crow documentation keeps it visible because the command reference includes it, but current `aprs.uc` still needs the Raven multi-backend code restored before backend-specific APRS group routing is fully supported.
-
 ### `/leave` — leave a channel and remove APRS group
 
 ```text
@@ -195,7 +234,7 @@ Removes the channel and deletes the APRS group if one exists for that name.
 /groups
 ```
 
-Shows configured APRS groups and members.
+Shows configured APRS groups and members. Groups with `repeat_member_messages: true` are marked with `[repeat]`. Groups bound to a backend show `[backend=NAME]`.
 
 ### `/backend` or `/backends` — list APRS backends
 
@@ -204,7 +243,7 @@ Shows configured APRS groups and members.
 /backends
 ```
 
-Shows configured APRS backend names. This is most useful after the multi-backend APRS implementation is restored.
+Shows configured APRS backend names and labels.
 
 ### `/channels` — channel management
 
@@ -228,7 +267,7 @@ Channels prefixed with `%` are AREDN-only and should never be bridged into encry
 | `#Name` | SHA-256 derived | Meshtastic + MeshCore + AREDN | General mesh chat |
 | `%Name` | `og==` unencrypted | AREDN only | APRS groups / Part 97 traffic |
 
-APRS group messages must stay unencrypted because APRS is amateur-radio traffic. When an APRS group is created, Crow should use the `og==` unencrypted key and keep that traffic AREDN-only.
+APRS group messages must stay unencrypted because APRS is amateur-radio traffic. When an APRS group is created with callsigns, Crow forces AREDN-only behavior and uses the `og==` unencrypted key.
 
 ## APRS chat commands
 
@@ -258,35 +297,111 @@ These are typed as normal chat text in the APRS channel, without a leading slash
 join #APRSgroup1 N0CALL-4, N0CALL-7 message text
 ```
 
-This creates `APRSgroup1` if missing, replaces the group member list, and sends the message. This in-chat form does not create a separate Crow channel; use `/join` for channel creation.
+With an explicit backend:
+
+```text
+join #APRSgroup1 backend=direwolf1 N0CALL-4, N0CALL-7 message text
+```
+
+This creates `APRSgroup1` if missing, replaces the group member list, optionally stores the backend binding, and sends the message. This in-chat form does not create a separate Crow channel; use `/join` for channel creation.
 
 ## Group repeat mode
 
-A group can optionally repeat received APRS messages from one group member back out to the other members:
+APRS group repeat mode lets Crow act like a small APRS message reflector for a configured group.
+
+When Crow receives an APRS message addressed to the Crow station callsign from a callsign that belongs to a configured group, Crow can repeat that message back out to the other members of the group.
+
+Example group config:
 
 ```json
 {
   "name": "APRSgroup1",
-  "members": [ "N0CALL-4", "N0CALL-7" ],
+  "members": [ "N0CALL-4", "N0CALL-7", "N0CALL-9" ],
   "repeat_member_messages": true,
   "rate_limit_seconds": 20,
   "max_members": 10
 }
 ```
 
-Crow applies duplicate suppression and rate limiting to reduce loops.
+With this enabled:
 
-## Raven pt97-compliance features still to restore in Crow code
+1. `N0CALL-4` sends an APRS message to the Crow station callsign.
+2. Crow sees that `N0CALL-4` is a member of `APRSgroup1`.
+3. Crow repeats the message to the other group members.
+4. Crow does **not** send the repeat back to `N0CALL-4`.
+5. Repeated messages are prefixed with the source callsign:
 
-The old Raven APRS code included features the current Crow APRS file does not yet fully match:
+```text
+[N0CALL-4] original message text
+```
 
-- `aprs.backends` plural configuration
-- multiple named backend instances
-- per-channel backend binding with `channels[].backend`
-- backend-specific inbound channel routing
-- backend-specific group routing
-- `/join #group backend=NAME ...` fully bound to the selected backend
-- `getBackendNames()` for UI/command listing
-- runtime backend binding updates
+The code uses the group's backend resolution path for repeated messages. If `group.backend` is set and valid, repeats use that backend. Otherwise they use the channel backend or the default backend.
 
-The passcode requirement is already covered for the current single APRS-IS backend through `aprs.backend.passcode`. The next code cleanup should restore Raven's multi-backend registry while preserving Crow naming and the current passcode behavior.
+### Loop and spam protection
+
+Crow applies two protections before repeating a member message:
+
+- duplicate suppression: the same `group + source + text + APRS id` is suppressed for 30 minutes
+- group rate limit: `rate_limit_seconds` defaults to 20 seconds between repeated messages for the group
+
+The send list also enforces `max_members`, defaulting to 10 when no group-specific value is set.
+
+### Default repeat behavior
+
+Groups created by `/join #name CALL1 CALL2 message text` default to:
+
+```json
+"repeat_member_messages": false
+```
+
+Enable repeat mode in the APRS group config only for groups where you intentionally want Crow to act as an APRS group reflector.
+
+## Inbound routing behavior
+
+When APRS traffic arrives, Crow tries to place it in the most useful local Crow channel.
+
+If the sending callsign is a member of a configured APRS group, Crow looks for a matching local group channel first:
+
+1. `%GroupName og==`
+2. a matching `#GroupName ...` channel
+3. the main APRS channel from `aprs.channel`
+
+For non-group traffic, Crow uses the channel/backend map where possible, then falls back to the main APRS channel.
+
+## Outbound behavior
+
+Crow outbound APRS behavior depends on the text pattern and current channel:
+
+| Text pattern | Behavior |
+| --- | --- |
+| `@CALL text` | Sends direct APRS message to `CALL`. |
+| `#Group text` | Sends to an existing group. |
+| `#Group CALL1 CALL2 text` | Sends to an inline list. |
+| `join #Group CALL1 CALL2 text` | Creates/updates runtime group and sends. |
+| normal text in group channel | Sends to that channel's APRS group. |
+| normal text in a backend-bound channel with a known last sender | Replies to the last stored APRS sender for that channel. |
+
+## Current implementation notes
+
+The current Crow APRS code includes:
+
+- APRS-IS passcode support per backend
+- APRS-IS text/TNC2 backend support
+- KISS TCP backend support
+- `tcp_text`, `xastir`, and `yaac` style TCP text backend support
+- multi-backend registry through `aprs.backends`
+- backward-compatible `aprs.backend` single-backend config
+- channel-to-backend binding
+- group-to-backend binding
+- runtime channel backend updates
+- `/backend` / `/backends` backend listing through `getBackendNames()`
+- APRS group send and repeat behavior
+- APRS message acknowledgements when received messages include an APRS message id
+
+## Safety notes
+
+- APRS is public amateur-radio traffic.
+- Keep `tx_enabled` off until station identification and operator-control requirements are correct.
+- Do not bridge APRS into encrypted channels.
+- Use `%Name og==` AREDN-only channels for APRS group traffic.
+- Be careful with group repeat mode; it transmits back out to multiple APRS stations.
