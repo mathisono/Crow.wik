@@ -13,6 +13,7 @@
 - [LoRa Gateway Tags](LoRa-Gateway-Tags)
 - [Meshtastic API Backend](Meshtastic-API)
 - [MeshCore Backends](MeshCore-Backends)
+- [MeshCore TCP API Protocol Notes](MeshCore-TCP-API-Protocol-Notes)
 - [Memory Use](Memory-Use)
 - [USB Storage](USB-Storage)
 - [Text Stores](Text-Stores)
@@ -33,6 +34,7 @@
 - `LoRa-Gateway-Tags.md`
 - `Meshtastic-API.md`
 - `MeshCore-Backends.md`
+- `MeshCore-TCP-API-Protocol-Notes.md`
 - `Memory-Use.md`
 - `Strict-Gatekeeper.md`
 - `Supernodes.md`
