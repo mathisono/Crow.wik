@@ -8,6 +8,16 @@ Crow is the rebranded and expanded home for the Raven mesh messaging work. The g
 
 ## 2026-06-25
 
+### Wiki: MeshCore TCP API protocol correction notes
+**Wiki status:** committed to `mathisono/Crow.wik`
+
+- Added `MeshCore-TCP-API-Protocol-Notes.md` to record the protocol mismatch in Crow's current `meshcore_tcp_api.uc` scaffold.
+- Documented that Crow currently assumes `[0x3E][CmdID][PayloadLen BE][Payload]`.
+- Documented stock MeshCore serial/Wi-Fi framing as radio-to-client `>` plus little-endian 2-byte length and client-to-radio `<` plus little-endian 2-byte length.
+- Documented the message-waiting receive model: `0x83` push/tickle, client sends `CMD_SYNC_NEXT_MESSAGE = 0x0A`, then decodes queued response codes `0x07`, `0x08`, `0x10`, and `0x11`.
+- Documented that `meshcore_tcp_discovery.uc` has the correct `CMD_GET_CHANNEL = 0x1F` and `RESP_CODE_CHANNEL_INFO = 0x12` discovery idea, but `queryDeviceGroups()` still does not send the command and returns an empty array.
+- Linked the new protocol notes page from `README.md`, `Home.md`, and `_Sidebar.md`.
+
 ### Wiki: verify Winlink USB storage behavior
 **Wiki status:** committed to `mathisono/Crow.wik`
 
