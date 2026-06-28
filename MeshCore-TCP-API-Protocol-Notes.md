@@ -1,22 +1,16 @@
 # MeshCore TCP API Protocol Notes
 
-This page records an important correction for Crow's experimental MeshCore TCP API work.
+This page records the protocol correction for Crow's experimental MeshCore TCP API work.
 
 ## Current status
 
-Crow's `meshcore_tcp_api.uc` should be treated as a development scaffold, not a stock-compatible MeshCore TCP/Wi-Fi or USB serial client yet.
+Crow's `meshcore_tcp_api.uc` has been corrected to use the stock MeshCore TCP/Wi-Fi and USB serial outer framing model.
 
-The current Crow file assumes this outer frame shape:
-
-```text
-[ 0x3E ][ CmdID ][ PayloadLen BE ][ Payload ]
-```
-
-That does not match the stock MeshCore serial/Wi-Fi outer framing described for the firmware interface.
+It should still be treated as experimental because outbound text send is not implemented yet and field testing with real MeshCore devices or captured frames is still needed.
 
 ## Correct stock outer framing
 
-Stock MeshCore TCP/Wi-Fi serial framing uses different direction markers and little-endian length fields:
+Stock MeshCore TCP/Wi-Fi serial framing uses direction markers and little-endian length fields:
 
 ```text
 Radio -> client: [ '>' ][ length LSB ][ length MSB ][ frame payload ]
@@ -25,13 +19,17 @@ Client -> radio: [ '<' ][ length LSB ][ length MSB ][ frame payload ]
 
 The USB serial interface uses the same `>` / `<` framing model.
 
-That means Crow's current TCP parser must be changed before it can talk to stock MeshCore Companion / Serial Wi-Fi framing.
+Crow now builds and parses frames using that model:
 
-## Message receive model correction
+- inbound parser looks for `>`
+- inbound length is 2-byte little-endian
+- outbound command helper sends `<`
+- outbound command length is 2-byte little-endian
+- frame payload begins with the MeshCore command/response/push code
 
-Crow's current file treats `0x07` and `0x08` like asynchronous direct/group message command IDs.
+## Message receive model
 
-The stock receive flow is different:
+Crow now follows the queued receive model:
 
 ```text
 0x83 = PUSH_CODE_MSG_WAITING
@@ -40,22 +38,22 @@ radio returns queued message response
 client decodes response code 0x07 / 0x08 / 0x10 / 0x11
 ```
 
-Crow should eventually handle:
+Handled codes:
 
-| Code | Role |
-|---:|---|
-| `0x83` | message waiting push/tickle |
-| `0x0A` | client command to fetch/sync the next queued message |
-| `0x07` | older direct-message receive response |
-| `0x08` | older channel/group-message receive response |
-| `0x10` | newer v3 direct-message receive response |
-| `0x11` | newer v3 channel/group-message receive response |
+| Code | Role | Current Crow behavior |
+|---:|---|---|
+| `0x83` | message waiting push/tickle | counted and triggers `CMD_SYNC_NEXT_MESSAGE = 0x0A` |
+| `0x0A` | client command to fetch/sync the next queued message | sent through `sendCommand()` |
+| `0x07` | older direct-message receive response | decoded as direct text |
+| `0x08` | older channel/group-message receive response | decoded as group text with slot metadata |
+| `0x10` | newer v3 direct-message receive response | accepted and decoded through the current direct-text envelope |
+| `0x11` | newer v3 channel/group-message receive response | accepted and decoded through the current group-text envelope |
 
-Until that sync flow is implemented, the TCP API backend should not be described as a working stock MeshCore receive backend.
+If firmware v3 adds fields before the text body, `decodeTextFrame()` is the place to split v3 handling further.
 
 ## Discovery status
 
-`meshcore_tcp_discovery.uc` has the right high-level discovery idea.
+`meshcore_tcp_discovery.uc` now sends channel discovery requests through the corrected TCP API command helper.
 
 The MeshCore channel discovery constants are:
 
@@ -73,41 +71,41 @@ channel index, 0-7
 16-byte secret
 ```
 
-That matches the parser documented in `meshcore_tcp_discovery.uc`.
+The TCP backend caches `0x12` responses, and discovery drains those cached responses through `takeResponse(0x12)`.
 
-The missing piece is command send. `queryDeviceGroups()` currently loops slots `0-7` but does not send the TCP command, so it returns an empty array.
+Because the TCP socket is non-blocking, discovery is still effectively asynchronous:
 
-The next missing implementation step is equivalent to:
+1. `queryDeviceGroups()` sends `CMD_GET_CHANNEL = 0x1F` for slots `0-7`.
+2. `meshcore_tcp_api.uc` receives and caches `0x12` responses as they arrive.
+3. A later discovery sync can parse cached responses and register slot/channel mappings.
 
-```text
-meshcore_tcp_api.sendCommand(0x1F, slot)
-```
+## Implemented checklist
 
-using the corrected client-to-radio frame:
+Implemented in Crow code:
 
-```text
-[ '<' ][ length LSB ][ length MSB ][ frame payload ]
-```
+- stock `>` / `<` frame markers
+- little-endian 2-byte frame lengths
+- client-to-radio `sendCommand()` helper
+- `0x83` message-waiting handling
+- `0x0A` sync-next-message command send
+- queued response decode for `0x07`, `0x08`, `0x10`, and `0x11`
+- response cache for `0x12` channel info
+- discovery command send for `CMD_GET_CHANNEL = 0x1F`
+- channel registration helper export from `channel.uc`
+- updated ucode and Node mirror tests for stock framing
 
-## Implementation checklist
+Still needed:
 
-Before calling the TCP API backend stock-compatible, Crow needs:
-
-1. Replace the current outer frame parser with stock `>` / `<` framing.
-2. Read and write 2-byte little-endian frame lengths.
-3. Add a command send helper for client-to-radio frames.
-4. Handle `PUSH_CODE_MSG_WAITING = 0x83`.
-5. Send `CMD_SYNC_NEXT_MESSAGE = 0x0A` when a message-waiting tickle arrives.
-6. Decode queued message responses `0x07`, `0x08`, `0x10`, and `0x11`.
-7. Wire discovery to send `CMD_GET_CHANNEL = 0x1F` for slots `0-7`.
-8. Keep group-slot-to-channel mapping after discovery returns real groups.
-9. Add tests using captured stock MeshCore TCP or USB serial frames.
+- field test with a stock MeshCore TCP/Wi-Fi or USB serial interface
+- captured-frame regression tests from real hardware
+- outbound text send for the TCP API backend
+- deeper v3 response parsing if `0x10` / `0x11` payloads differ from the current decoded envelope
 
 ## Operator note
 
-For now, use the original MeshCore UDP backend for working MeshCore operation.
+For now, use the original MeshCore UDP backend for production MeshCore operation.
 
-The TCP API backend may connect to a TCP port, but stock MeshCore frames are not expected to decode correctly until this protocol work is done.
+The TCP API backend is now aligned with the stock outer framing and queued receive model, but it should remain experimental until it is tested against real MeshCore firmware.
 
 See also:
 
